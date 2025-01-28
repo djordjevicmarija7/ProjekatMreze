@@ -8,7 +8,10 @@ namespace NeLjutiSeCovece
 {
     public class Figura
     {
-        public int Pozicija { get; set; } = -1;
-        public bool jeAktivna => Pozicija >= 0;
+        public int Id {  get; set; }
+        public int Pozicija { get; set; }
+        public bool Aktivna { get; set; }
+        public int UdaljenostDoCilja {  get; set; }
+
     }
 }

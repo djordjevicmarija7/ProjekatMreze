@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -8,59 +9,74 @@ namespace NeLjutiSeCovece
 {
     public class Igra
     {
-        public int velicinaTable { get; set; }
-        public List<Korisnik> Igraci { get; set; } = new List<Korisnik>();
-        public int trenutniIgracIndeks { get; set; } = 0;
-        public void sledeciPotez()
+       public List<Korisnik> Igraci {  get; set; }
+        public int TrenutniIgracIndeks { get; set; }
+        public bool Zavrsena {  get; set; }
+
+        public Igra()
         {
-            trenutniIgracIndeks = (trenutniIgracIndeks + 1) % Igraci.Count;
+            Igraci = new List<Korisnik>();
+            TrenutniIgracIndeks = 0;
+            Zavrsena = false;
         }
 
-        public Korisnik DohvatiTrenutnogIgraca()
+        public Korisnik TrenutniIgrac()
         {
-            return Igraci[trenutniIgracIndeks];
+            return Igraci[TrenutniIgracIndeks];
         }
 
-        public string ValidirajPotez(Potez potez)
+        public void SledeciPotez(bool dodatniPotez)
         {
-            Console.WriteLine($"Validacija poteza: Akcija={potez.Akcija}");
-            potez.Akcija = potez.Akcija.Trim().ToLower();
-
-            if (potez.Akcija == "aktivacija")
+            if (!dodatniPotez)
             {
-                if (potez.brojPolja != 6)
-                    return "Figura se moze aktivirati samo bacanjem broja 6.";
+                TrenutniIgracIndeks = (TrenutniIgracIndeks + 1) % Igraci.Count;
+            }
+        }
+        public bool DaLiJePotezValidan(Figura figura, int rezultatKocke, int CiljPozicija)
+        {
+            if(!figura.Aktivna && rezultatKocke == 6)
+            {
+                return true; //aktivacija
+            }
+            if(figura.Aktivna && figura.Pozicija + rezultatKocke <= CiljPozicija)
+            {
+                return true; //pomeranje figure unutar granica cilja 
+            }
+            return false;
+        }
 
-                Korisnik trenutniIgrac = DohvatiTrenutnogIgraca();
-                Figura figura = trenutniIgrac.Figure[potez.IdFigure];
-
-                if (figura.jeAktivna)
-                    return "Figura je vec aktivna.";
-
+        public void AzurirajFiguru(Figura figura, int rezultatKocke)
+        {
+            if (!figura.Aktivna && rezultatKocke == 6)
+            {
+                figura.Aktivna = true;
                 figura.Pozicija = 0;
-                return "Figura je uspjesno aktivirana.";
             }
-
-
-            if (potez.Akcija == "pomicanje")
+            else if (figura.Aktivna )
             {
-                Korisnik trenutniIgrac = DohvatiTrenutnogIgraca();
-                Figura figura = trenutniIgrac.Figure[potez.IdFigure];
-
-                if (!figura.jeAktivna)
-                    return "Figura nije aktivna.";
-
-                figura.Pozicija += potez.brojPolja;
-                return "Potez uspesno izvrsen.";
+                figura.Pozicija += rezultatKocke;
+                figura.UdaljenostDoCilja -= rezultatKocke;
             }
-            if (potez.Akcija == "kraj poteza")
+        }
+
+        public bool ProveriPrelapanje(Figura figura, List<Korisnik> igraci, Korisnik trnutniIgrac)
+        {
+            foreach(var igrac in igraci)
             {
-                sledeciPotez();
-                return "Potez zavrsen. Sada je na potezu sljedeci igrac.";
+                if (igrac.Id != trnutniIgrac.Id)
+                {
+                    foreach(var protivnickaFigura in igrac.Figure)
+                    {
+                        if(protivnickaFigura.Aktivna && protivnickaFigura.Pozicija == figura.Pozicija)
+                        {
+                            protivnickaFigura.Aktivna = false;
+                            protivnickaFigura.Pozicija = -1;
+                            return true;
+                        }
+                    }
+                }
             }
-
-            return "Nepoznata akcija.";
-
+            return false;
         }
     }
 }
