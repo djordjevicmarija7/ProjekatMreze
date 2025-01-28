@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 
 namespace NeLjutiSeCovece
 {
-    internal class Program
+    public class Potez
     {
-        static void Main(string[] args)
-        {
-        }
+        public int IdFigure { get; set; }
+        public string Akcija { get; set; }
+        public int brojPolja { get; set; }
     }
 }
