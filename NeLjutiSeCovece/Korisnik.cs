@@ -28,7 +28,7 @@ namespace NeLjutiSeCovece
             Figure = new List<Figura>();
             for(int i=0; i<4; i++)
             {
-                Figura.Add(new Figura { Id = i, Pozicija = -1, Aktivna = false, UdaljenostDoCilja = ciljPozicija });
+                Figure.Add(new Figura { Id = i, Pozicija = -1, Aktivna = false, UdaljenostDoCilja = ciljPozicija });
             }
         }
     }

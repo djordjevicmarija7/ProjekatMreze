@@ -5,17 +5,20 @@ using System.Net.Sockets;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace NeLjutiSeCovece
 {
     public class Server
     {
         private const int Port = 5000;
-        private Igra igra;
+        private Igra Igra;
+        private List<Socket> Klijenti;
 
         public Server(Igra igra)
         {
-            this.igra = igra;
+            Igra = igra;
+            Klijenti = new List<Socket>();
         }
 
         public void Pokreni()
@@ -25,21 +28,30 @@ namespace NeLjutiSeCovece
             serverSocket.Bind(serverEp);
             serverSocket.Listen(10);
 
-            Console.WriteLine($"Server je pokrenut i ceka klijente na : {serverEp}");
+            Console.WriteLine($"Server je pokrenut i čeka klijente na: {serverEp}");
 
             while (true)
             {
                 Socket klijentSocket = serverSocket.Accept();
-                Console.WriteLine("Klijnet je povezan.");
+                Console.WriteLine("Klijent je povezan.");
+                Klijenti.Add(klijentSocket);
 
+                Thread klijentThread = new Thread(() => ObradiKlijenta(klijentSocket));
+                klijentThread.Start();
+            }
+        }
+
+        private void ObradiKlijenta(Socket klijentSocket)
+        {
+            try
+            {
                 byte[] prijemniBafer = new byte[6000];
                 int brojPrimljenihBajtova = klijentSocket.Receive(prijemniBafer);
 
                 if (brojPrimljenihBajtova == 0)
                 {
                     Console.WriteLine("Greška: Prazna poruka primljena.");
-                    klijentSocket.Close();
-                    continue;
+                    return;
                 }
 
                 string poruka = Encoding.UTF8.GetString(prijemniBafer, 0, brojPrimljenihBajtova);
@@ -54,24 +66,34 @@ namespace NeLjutiSeCovece
                     potez = new Potez
                     {
                         Akcija = dijelovi[0].Trim(),
-                        IdFigure = int.Parse(dijelovi[1].Trim()),
-                        brojPolja = int.Parse(dijelovi[2].Trim())
+                        Id = int.Parse(dijelovi[1].Trim()),
+                        BrojPolja = int.Parse(dijelovi[2].Trim())
                     };
-                    Console.WriteLine($"Primljena akcija: {potez.Akcija},IdFigure: {potez.IdFigure}, Broj Polja: {potez.brojPolja}");
+                    Console.WriteLine($"Primljena akcija: {potez.Akcija}, IdFigure: {potez.Id}, BrojPolja: {potez.BrojPolja}");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Greska pri parsiranju poruke: {ex.Message}");
-                    byte[] greskaBafer = Encoding.UTF8.GetBytes("Nespravan format poruke.");
+                    Console.WriteLine($"Greška pri parsiranju poruke: {ex.Message}");
+                    byte[] greskaBafer = Encoding.UTF8.GetBytes("Neispravan format poruke.");
                     klijentSocket.Send(greskaBafer);
-                    klijentSocket.Close();
-                    continue;
+                    return;
                 }
-                string rezultat = igra.ValidirajPotez(potez);
 
+
+
+                string rezultat = Igra.DaLiJePotezValidan(potez.Id,potez.BrojPolja,);
                 byte[] odgovorBafer = Encoding.UTF8.GetBytes(rezultat);
                 klijentSocket.Send(odgovorBafer);
 
+                Console.WriteLine($"Rezultat poslat klijentu: {rezultat}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Greška pri obradi klijenta: {ex.Message}");
+            }
+            finally
+            {
+                Console.WriteLine("Zatvaranje konekcije sa klijentom.");
                 klijentSocket.Close();
             }
         }
