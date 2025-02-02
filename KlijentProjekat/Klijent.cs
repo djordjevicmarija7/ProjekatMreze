@@ -6,15 +6,24 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Klijent
+namespace KlijentProjekat
 {
     public class Klijent
     {
-        private const int Port = 5000;
+        private const int DefaultPort = 5000;
+        private string ServerIp;
+        private int Port;
+
+        public Klijent(string serverIp, int port = DefaultPort)
+        {
+            ServerIp = serverIp;
+            Port = port;
+        }
+
         public void Pokreni(string ipServera)
         {
             Socket klijentSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            IPEndPoint serverEp=new IPEndPoint(IPAddress.Parse(ipServera), Port);
+            IPEndPoint serverEp = new IPEndPoint(IPAddress.Parse(ipServera), Port);
             try
             {
                 klijentSocket.Connect(serverEp);
@@ -29,19 +38,19 @@ namespace Klijent
                         Console.WriteLine("Akcija ne moze biti prazna. Pokusajte ponovo.");
                         continue;
                     }
-                    if(akcija=="kraj poteza")
+                    if (akcija == "kraj poteza")
                     {
                         PosaljiPoruku(klijentSocket, $"{akcija}\n");
                         string odgovor = PrimiPoruku(klijentSocket);
                         Console.WriteLine($"Odgovor servera: {odgovor}");
 
-                        if(odgovor.Contains("sljedeci igrac"))
+                        if (odgovor.Contains("sljedeci igrac"))
                         {
                             break;
                         }
                         continue;
                     }
-                    else if(akcija=="aktivacija" || akcija == "pomicanje")
+                    else if (akcija == "aktivacija" || akcija == "pomicanje")
                     {
                         Console.WriteLine("Unesite ID figure(npr. 0, 1, 2...):");
                         string idFigure = Console.ReadLine()?.Trim();
@@ -92,5 +101,5 @@ namespace Klijent
             return Encoding.UTF8.GetString(prijemniBafer, 0, brojPrimljenihBajtova);
         }
     }
-                
+
 }

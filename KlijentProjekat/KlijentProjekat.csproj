@@ -4,10 +4,10 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{97C96FBA-27DA-4935-A86B-CD13FDB6739D}</ProjectGuid>
+    <ProjectGuid>{C57F2E0A-8358-481C-9368-38FA4D0B60D4}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>Klijent</RootNamespace>
-    <AssemblyName>Klijent</AssemblyName>
+    <RootNamespace>KlijentProjekat</RootNamespace>
+    <AssemblyName>KlijentProjekat</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>

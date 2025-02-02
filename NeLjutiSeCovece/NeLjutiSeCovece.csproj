@@ -47,11 +47,18 @@
     <Compile Include="Igra.cs" />
     <Compile Include="Korisnik.cs" />
     <Compile Include="Potez.cs" />
+    <Compile Include="Program.cs" />
     <Compile Include="Server.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\KlijentProjekat\KlijentProjekat.csproj">
+      <Project>{c57f2e0a-8358-481c-9368-38fa4d0b60d4}</Project>
+      <Name>KlijentProjekat</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
