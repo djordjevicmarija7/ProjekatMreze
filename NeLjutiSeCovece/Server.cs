@@ -31,7 +31,7 @@ namespace NeLjutiSeCovece
 
             Console.WriteLine($"Server je pokrenut i čeka klijente na: {serverEp}");
 
-            while (true)
+            while (Klijenti.Count < 2)
             {
                 Socket klijentSocket = serverSocket.Accept();
                 Console.WriteLine("Klijent je povezan.");
@@ -39,18 +39,30 @@ namespace NeLjutiSeCovece
 
                 Thread klijentThread = new Thread(() => ObradiKlijenta(klijentSocket));
                 klijentThread.Start();
-
-                if (Klijenti.Count == 2)
-                {
-                    PokreniIgru();
-                }
             }
+            PokreniIgru();
         }
 
         private void ObradiKlijenta(Socket klijentSocket)
         {
             try
             {
+                int igracId = Klijenti.Count - 1;
+                int startPozicija = igracId * 10;
+                int ciljPozicija = startPozicija + 39;
+                Korisnik igrac = new Korisnik(igracId, $"Igrac{igracId + 1}", startPozicija, ciljPozicija);
+
+                igrac.Figure = new List<Figura>
+                {
+                    new Figura{Id=0,Aktivna=false,Pozicija=-1},
+                    new Figura{Id=1,Aktivna=false,Pozicija=-1},
+                    new Figura{Id=2,Aktivna=false,Pozicija=-1},
+                    new Figura{Id=3,Aktivna=false,Pozicija=-1}
+                };
+
+                Igra.Igraci.Add(igrac);
+                Console.WriteLine($"Dodat igrac: {igrac.Ime} sa {igrac.Figure.Count} figura.");
+
                 while (true)
                 {
                     byte[] prijemniBafer = new byte[6000];
@@ -63,8 +75,15 @@ namespace NeLjutiSeCovece
                         return;
                     }
 
-                    string poruka = Encoding.UTF8.GetString(prijemniBafer, 0, brojPrimljenihBajtova);
+                    string poruka = Encoding.UTF8.GetString(prijemniBafer, 0, brojPrimljenihBajtova).Trim();
                     Console.WriteLine($"Primljeno: {poruka}");
+
+                    if(poruka.Equals("kraj",StringComparison.OrdinalIgnoreCase))
+                    {
+                        Console.WriteLine("Korisnik je zavrsio potez.");
+                        Igra.SledeciPotez(false);
+                        continue;
+                    }
 
                     Potez potez;
                     try
@@ -78,7 +97,6 @@ namespace NeLjutiSeCovece
                             Id = int.Parse(dijelovi[1].Trim()),
                             BrojPolja = int.Parse(dijelovi[2].Trim())
                         };
-                        Console.WriteLine($"Primljena akcija: {potez.Akcija}, IdFigure: {potez.Id}, BrojPolja: {potez.BrojPolja}");
                     }
                     catch (Exception ex)
                     {
@@ -88,45 +106,11 @@ namespace NeLjutiSeCovece
                         continue;
                     }
 
-                    string rezultat = "Neispravan potez.";
-
-                    Korisnik trenutniIgrac = null;
-
-                    foreach (var igrac in Igra.Igraci)
-                    {
-                        if (igrac.Id == potez.Id)
-                        {
-                            trenutniIgrac = igrac;
-                            break;
-                        }
-                    }
-                    if (trenutniIgrac != null)
-                    {
-                        Figura figura = null;
-                        foreach (var f in trenutniIgrac.Figure)
-                        {
-                            if (f.Id == potez.Id)
-                            {
-                                figura = f;
-                                break;
-                            }
-                        }
-                        if (figura != null)
-                        {
-                            bool validanPotez = Igra.DaLiJePotezValidan(figura, potez.BrojPolja, trenutniIgrac.CiljPozicija);
-
-                            if (validanPotez)
-                            {
-                                Igra.AzurirajFiguru(figura, potez.BrojPolja);
-                                rezultat = $"Potez validan. Nova pozicija figure: {figura.Pozicija}";
-                            }
-                        }
-                    }
-                    byte[] odgovorBafer = Encoding.UTF8.GetBytes(rezultat);
+                    string rezultat1 = Igra.ValidirajPotez(potez);
+                    byte[] odgovorBafer = Encoding.UTF8.GetBytes(rezultat1);
                     klijentSocket.Send(odgovorBafer);
 
-
-                    Console.WriteLine($"Rezultat poslat klijentu: {rezultat}");
+                    Console.WriteLine($"Rezultat poslat klijentu: {rezultat1}");
                 }
             }
             catch (Exception ex)
@@ -143,20 +127,20 @@ namespace NeLjutiSeCovece
         {
             Console.WriteLine("Igra zapocinje...");
 
-            for (int i = 0; i < Klijenti.Count; i++)
-            {
-                int startPozicija = i * 10;
-                int ciljPozicija = startPozicija + 39;
-                Igra.Igraci.Add(new Korisnik(i, $"Igrac{i + 1}", startPozicija, ciljPozicija));
-            }
             while (!Igra.Zavrsena)
             {
                 Korisnik trenutniIgrac = Igra.TrenutniIgrac();
+
+                if (trenutniIgrac.Id >= Klijenti.Count || trenutniIgrac.Id < 0)
+                {
+                    Console.WriteLine("Greska: Nepoznat Id trenutnog igraca.");
+                    break;
+                }
+
                 Socket klijent = Klijenti[trenutniIgrac.Id];
-                PosaljiPoruku(klijent, "Vas red!Bacite kockicu.");
+                PosaljiPoruku(klijent, "Vas red! Bacite kockicu.");
                 ObradiKlijenta(klijent);
                 Igra.SledeciPotez(false);
-
             }
             ObavestiSve("Igra je zavrsena!");
         }
@@ -171,6 +155,12 @@ namespace NeLjutiSeCovece
             {
                 PosaljiPoruku(klijent, poruka);
             }
+        }
+        static void Main(string[] args)
+        {
+            Igra igra = new Igra();
+            Server server = new Server(igra);
+            server.Pokreni();
         }
     }
 }

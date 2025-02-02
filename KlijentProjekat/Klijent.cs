@@ -30,7 +30,7 @@ namespace KlijentProjekat
                 Console.WriteLine("Povezan sa serverom. Mozete unositi poteze: ");
                 while (true)
                 {
-                    Console.WriteLine("Unesote akciju(aktivacija, pomicanje, kraj poteza): ");
+                    Console.WriteLine("Unesite akciju(aktivacija, pomicanje, kraj): ");
                     string akcija = Console.ReadLine()?.Trim();
 
                     if (string.IsNullOrEmpty(akcija))
@@ -38,7 +38,7 @@ namespace KlijentProjekat
                         Console.WriteLine("Akcija ne moze biti prazna. Pokusajte ponovo.");
                         continue;
                     }
-                    if (akcija == "kraj poteza")
+                    if (akcija == "kraj")
                     {
                         PosaljiPoruku(klijentSocket, $"{akcija}\n");
                         string odgovor = PrimiPoruku(klijentSocket);
@@ -55,7 +55,7 @@ namespace KlijentProjekat
                         Console.WriteLine("Unesite ID figure(npr. 0, 1, 2...):");
                         string idFigure = Console.ReadLine()?.Trim();
 
-                        Console.WriteLine("Unesite broj polja (za akdtivaciju =6 ili broj za pomicanje):");
+                        Console.WriteLine("Unesite broj polja (za aktivaciju =6 ili broj za pomicanje):");
                         string brojPolja = Console.ReadLine()?.Trim();
 
                         if (string.IsNullOrEmpty(idFigure) || string.IsNullOrEmpty(brojPolja))
@@ -100,6 +100,13 @@ namespace KlijentProjekat
             int brojPrimljenihBajtova = klijentSocket.Receive(prijemniBafer);
             return Encoding.UTF8.GetString(prijemniBafer, 0, brojPrimljenihBajtova);
         }
-    }
+        static void Main(string[] args)
+        {
+            Console.WriteLine("Unesite Ip adresu servera:");
+            string serverIp = Console.ReadLine();
+            Klijent klijent = new Klijent(serverIp, 5000);
+            klijent.Pokreni(serverIp);
+        }
+        }
 
 }
