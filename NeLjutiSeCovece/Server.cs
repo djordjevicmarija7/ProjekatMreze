@@ -15,6 +15,7 @@ namespace NeLjutiSeCovece
         private Igra Igra;
         private Socket serverSocket;
         private List<Socket> Klijenti;
+        private const int MaxIgraca = 4;
 
         public Server(Igra igra)
         {
@@ -31,7 +32,7 @@ namespace NeLjutiSeCovece
 
             Console.WriteLine($"Server je pokrenut i čeka klijente na: {serverEp}");
 
-            while (Klijenti.Count < 2)
+            while (Klijenti.Count < MaxIgraca)
             {
                 Socket klijentSocket = serverSocket.Accept();
                 Console.WriteLine("Klijent je povezan.");
@@ -47,7 +48,7 @@ namespace NeLjutiSeCovece
         {
             try
             {
-                int igracId = Klijenti.Count - 1;
+                int igracId = Klijenti.IndexOf(klijentSocket);
                 int startPozicija = igracId * 10;
                 int ciljPozicija = startPozicija + 39;
                 Korisnik igrac = new Korisnik(igracId, $"Igrac{igracId + 1}", startPozicija, ciljPozicija);
@@ -82,6 +83,7 @@ namespace NeLjutiSeCovece
                     {
                         Console.WriteLine("Korisnik je zavrsio potez.");
                         Igra.SledeciPotez(false);
+                        ObavestiSveOStanjuIgre();
                         continue;
                     }
 
@@ -89,6 +91,13 @@ namespace NeLjutiSeCovece
                     try
                     {
                         string[] dijelovi = poruka.Split('\n');
+                       if(dijelovi.Length==1 && dijelovi[0].Trim().Equals("kraj"))
+                        {
+                            Console.WriteLine("Korisnik je zavrsio potez");
+                            Igra.SledeciPotez(false);
+                            ObavestiSveOStanjuIgre();
+                            continue;
+                        }
                         if (dijelovi.Length != 3)
                             throw new FormatException("Poruka mora sadržavati tačno 3 linije: Akcija, IdFigure i BrojPolja.");
                         potez = new Potez
@@ -111,6 +120,7 @@ namespace NeLjutiSeCovece
                     klijentSocket.Send(odgovorBafer);
 
                     Console.WriteLine($"Rezultat poslat klijentu: {rezultat1}");
+                    ObavestiSveOStanjuIgre();
                 }
             }
             catch (Exception ex)
@@ -121,6 +131,15 @@ namespace NeLjutiSeCovece
             {
                 Console.WriteLine("Zatvaranje konekcije sa klijentom.");
                 klijentSocket.Close();
+            }
+        }
+
+        private void ObavestiSveOStanjuIgre()
+        {
+            string izvestaj = Igra.GenerisiIzvestaj();
+            foreach(var klijent in Klijenti)
+            {
+                PosaljiPoruku(klijent, izvestaj);
             }
         }
         private void PokreniIgru()
@@ -140,7 +159,7 @@ namespace NeLjutiSeCovece
                 Socket klijent = Klijenti[trenutniIgrac.Id];
                 PosaljiPoruku(klijent, "Vas red! Bacite kockicu.");
                 ObradiKlijenta(klijent);
-                Igra.SledeciPotez(false);
+               
             }
             ObavestiSve("Igra je zavrsena!");
         }
