@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 
 namespace NeLjutiSeCovece
 {
@@ -13,7 +14,6 @@ namespace NeLjutiSeCovece
         private Socket serverSocket;
         private List<Socket> Klijenti;
         private const int MaxIgraca = 4;
-        private const int MinIgraca = 2;
 
         public Server(Igra igra)
         {
@@ -23,194 +23,149 @@ namespace NeLjutiSeCovece
 
         public void Pokreni()
         {
+            serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            IPEndPoint serverEp = new IPEndPoint(IPAddress.Any, Port);
+            serverSocket.Bind(serverEp);
+            serverSocket.Listen(10);
+
+            Console.WriteLine($"Server je pokrenut i čeka klijente na: {serverEp}");
+
+            while (Klijenti.Count < MaxIgraca)
+            {
+                Socket klijentSocket = serverSocket.Accept();
+                Console.WriteLine("Klijent je povezan.");
+                Klijenti.Add(klijentSocket);
+
+                Thread klijentThread = new Thread(() => ObradiKlijenta(klijentSocket));
+                klijentThread.Start();
+            }
+            PokreniIgru();
+        }
+
+        private void ObradiKlijenta(Socket klijentSocket)
+        {
             try
             {
-              
-                serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                IPEndPoint serverEp = new IPEndPoint(IPAddress.Any, Port);
-                serverSocket.Bind(serverEp);
-                serverSocket.Listen(10);
+                int igracId = Klijenti.IndexOf(klijentSocket);
+                int startPozicija = igracId * 10;
+                int ciljPozicija = startPozicija + 39;
+                Korisnik igrac = new Korisnik(igracId, $"Igrac{igracId + 1}", startPozicija, ciljPozicija);
 
-               
-                serverSocket.Blocking = false;
-
-                Console.WriteLine($"Server je pokrenut i čeka klijente na: {serverEp}");
-
-               
-                while (Klijenti.Count < MaxIgraca)
+                igrac.Figure = new List<Figura>
                 {
+                    new Figura{Id=0,Aktivna=false,Pozicija=-1},
+                    new Figura{Id=1,Aktivna=false,Pozicija=-1},
+                    new Figura{Id=2,Aktivna=false,Pozicija=-1},
+                    new Figura{Id=3,Aktivna=false,Pozicija=-1}
+                };
+
+                Igra.Igraci.Add(igrac);
+                Console.WriteLine($"Dodat igrac: {igrac.Ime} sa {igrac.Figure.Count} figura.");
+
+                while (true)
+                {
+                    byte[] prijemniBafer = new byte[6000];
+                    int brojPrimljenihBajtova = klijentSocket.Receive(prijemniBafer);
+
+                    if (brojPrimljenihBajtova == 0)
+                    {
+                        Console.WriteLine("Greška: Prazna poruka primljena.");
+                        klijentSocket.Close();
+                        return;
+                    }
+
+                    string poruka = Encoding.UTF8.GetString(prijemniBafer, 0, brojPrimljenihBajtova).Trim();
+                    Console.WriteLine($"Primljeno: {poruka}");
+
+                    if (poruka.Equals("kraj", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Console.WriteLine("Korisnik je zavrsio potez.");
+                        Igra.SledeciPotez(false);
+                        ObavestiSveOStanjuIgre();
+                        continue;
+                    }
+
+                    Potez potez;
                     try
                     {
-                        if (serverSocket.Poll(1000, SelectMode.SelectRead))
+                        string[] dijelovi = poruka.Split('\n');
+                        if (dijelovi.Length == 1 && dijelovi[0].Trim().Equals("kraj"))
                         {
-                            Socket klijentSocket = serverSocket.Accept();
-                            klijentSocket.Blocking = false;
-                            Console.WriteLine($"Klijent povezan sa {klijentSocket.RemoteEndPoint}");
-                            Klijenti.Add(klijentSocket);
-
-                         
-                            int igracId = Klijenti.IndexOf(klijentSocket);
-                            string imeIgraca = GetImeIgraca(igracId);
-
-                            Korisnik igrac = new Korisnik(igracId, imeIgraca, igracId * 10, igracId * 10 + 39);
-                            igrac.Figure = new List<Figura>
-                            {
-                                new Figura{Id=0, Aktivna=false, Pozicija=-1},
-                                new Figura{Id=1, Aktivna=false, Pozicija=-1},
-                                new Figura{Id=2, Aktivna=false, Pozicija=-1},
-                                new Figura{Id=3, Aktivna=false, Pozicija=-1}
-                            };
-
-                            Igra.Igraci.Add(igrac);
-                            Console.WriteLine($"Dodat igrac: {igrac.Ime}");
-                            PosaljiPoruku(klijentSocket, $"Dobrodošli, vaš ID je {igracId}");
-                        }
-                    }
-                    catch (SocketException e)
-                    {
-                        if (e.SocketErrorCode == SocketError.WouldBlock)
-                        {
-                          
-                            continue;
-                        }
-                        Console.WriteLine($"Greška pri prihvatanju novog klijenta: {e.Message}");
-                    }
-                }
-
-                
-                if (Klijenti.Count >= MinIgraca)
-                {
-                    ObavestiSve("Igra počinje!");
-                    Console.WriteLine("Svi igrači su povezani. Igra može da počne!");
-                }
-
-               
-                while (!Igra.Zavrsena)
-                {
-                    Korisnik trenutniIgrac = Igra.TrenutniIgrac();
-                    Console.WriteLine($"Na redu je: {trenutniIgrac.Ime}");
-                    PosaljiPoruku(Klijenti[trenutniIgrac.Id], "Vaš red! Bacite kockicu.");
-
-                    List<Socket> spremniZaCitanje = new List<Socket>(Klijenti);
-                    Socket.Select(spremniZaCitanje, null, null, 1000);
-
-                    foreach (Socket klijent in spremniZaCitanje)
-                    {
-                        byte[] prijemniBafer = new byte[6000];
-                        int brojPrimljenihBajtova = klijent.Receive(prijemniBafer);
-
-                        if (brojPrimljenihBajtova == 0)
-                        {
-                            Console.WriteLine("Greška: Prazna poruka primljena.");
-                            klijent.Close();
-                            Klijenti.Remove(klijent);
-                            continue;
-                        }
-
-                        string poruka = Encoding.UTF8.GetString(prijemniBafer, 0, brojPrimljenihBajtova).Trim();
-                        Console.WriteLine($"Primljeno: {poruka}");
-
-                        
-                        if (poruka.Equals("kraj", StringComparison.OrdinalIgnoreCase))
-                        {
+                            Console.WriteLine("Korisnik je zavrsio potez");
                             Igra.SledeciPotez(false);
                             ObavestiSveOStanjuIgre();
+                            continue;
                         }
-                        else if (poruka == "izvestaj")
+                        if (dijelovi.Length != 3)
+                            throw new FormatException("Poruka mora sadržavati tačno 3 linije: Akcija, IdFigure i BrojPolja.");
+                        potez = new Potez
                         {
-                            ObavestiSveOStanjuIgre();
-                        }
-                        else
-                        {
-                            
-                            try
-                            {
-                                string[] dijelovi = poruka.Split('\n');
-                                if (dijelovi.Length != 3)
-                                    throw new FormatException("Poruka mora sadržavati tačno 3 linije: Akcija, IdFigure i BrojPolja.");
-
-                                Potez potez = new Potez
-                                {
-                                    Akcija = dijelovi[0].Trim(),
-                                    Id = int.Parse(dijelovi[1].Trim()),
-                                    BrojPolja = int.Parse(dijelovi[2].Trim())
-                                };
-
-                                string rezultat1 = Igra.ValidirajPotez(potez);
-                                byte[] odgovorBafer = Encoding.UTF8.GetBytes(rezultat1);
-                                klijent.Send(odgovorBafer);
-                                Console.WriteLine($"Rezultat poslat klijentu: {rezultat1}");
-                                ObavestiSveOStanjuIgre();
-                            }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine($"Greška pri parsiranju poruke: {ex.Message}");
-                                byte[] greskaBafer = Encoding.UTF8.GetBytes("Neispravan format poruke.");
-                                klijent.Send(greskaBafer);
-                            }
-                        }
+                            Akcija = dijelovi[0].Trim(),
+                            Id = int.Parse(dijelovi[1].Trim()),
+                            BrojPolja = int.Parse(dijelovi[2].Trim())
+                        };
                     }
-                }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Greška pri parsiranju poruke: {ex.Message}");
+                        byte[] greskaBafer = Encoding.UTF8.GetBytes("Neispravan format poruke.");
+                        klijentSocket.Send(greskaBafer);
+                        continue;
+                    }
 
-                ObavestiSve("Igra je završena!");
-                Console.WriteLine("Igra je završena. Svi igrači su obavešteni!");
-                ZatvoriSve();
+                    string rezultat1 = Igra.ValidirajPotez(potez);
+                    byte[] odgovorBafer = Encoding.UTF8.GetBytes(rezultat1);
+                    klijentSocket.Send(odgovorBafer);
+
+                    Console.WriteLine($"Rezultat poslat klijentu: {rezultat1}");
+                    ObavestiSveOStanjuIgre();
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Greška u mrežnoj komunikaciji: {ex.Message}");
-                ZatvoriSve();
+                Console.WriteLine($"Greška pri obradi klijenta: {ex.Message}");
             }
-        }
-
-        private void ZatvoriSve()
-        {
-            foreach (Socket klijent in Klijenti)
+            finally
             {
-                klijent.Send(Encoding.UTF8.GetBytes("Server je završio sa radom."));
-                klijent.Close();
-            }
-            serverSocket.Close();
-        }
-
-        private string GetImeIgraca(int igracId)
-        {
-
-            if (igracId == 0)
-            {
-                return "Crvena";
-            }
-            else if (igracId == 1)
-            {
-                return "Plava";
-            }
-            else if (igracId == 2)
-            {
-                return "Zelena";
-            }
-            else if (igracId == 3)
-            {
-                return "Žuta";
-            }
-            else
-            {
-                return "Nepoznato";
+                Console.WriteLine("Zatvaranje konekcije sa klijentom.");
+                klijentSocket.Close();
             }
         }
 
         private void ObavestiSveOStanjuIgre()
         {
             string izvestaj = Igra.GenerisiIzvestaj();
-            Console.WriteLine($"Stanje igre: {izvestaj}");
-            ObavestiSve(izvestaj);
+            foreach (var klijent in Klijenti)
+            {
+                PosaljiPoruku(klijent, izvestaj);
+            }
         }
+        private void PokreniIgru()
+        {
+            Console.WriteLine("Igra zapocinje...");
 
+            while (!Igra.Zavrsena)
+            {
+                Korisnik trenutniIgrac = Igra.TrenutniIgrac();
+
+                if (trenutniIgrac.Id >= Klijenti.Count || trenutniIgrac.Id < 0)
+                {
+                    Console.WriteLine("Greska: Nepoznat Id trenutnog igraca.");
+                    break;
+                }
+
+                Socket klijent = Klijenti[trenutniIgrac.Id];
+                PosaljiPoruku(klijent, "Vas red! Bacite kockicu.");
+                ObradiKlijenta(klijent);
+
+            }
+            ObavestiSve("Igra je zavrsena!");
+        }
         private void PosaljiPoruku(Socket klijent, string poruka)
         {
             byte[] podaci = Encoding.UTF8.GetBytes(poruka);
             klijent.Send(podaci);
         }
-
         private void ObavestiSve(string poruka)
         {
             foreach (var klijent in Klijenti)
@@ -218,7 +173,6 @@ namespace NeLjutiSeCovece
                 PosaljiPoruku(klijent, poruka);
             }
         }
-
         static void Main(string[] args)
         {
             Igra igra = new Igra();
