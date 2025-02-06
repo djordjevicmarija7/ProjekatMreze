@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Net.Sockets;
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace KlijentProjekat
 {
@@ -13,6 +11,7 @@ namespace KlijentProjekat
         private const int DefaultPort = 5000;
         private string ServerIp;
         private int Port;
+
 
         public Klijent(string serverIp, int port = DefaultPort)
         {
@@ -26,11 +25,22 @@ namespace KlijentProjekat
             IPEndPoint serverEp = new IPEndPoint(IPAddress.Parse(ipServera), Port);
             try
             {
+                
                 klijentSocket.Connect(serverEp);
                 Console.WriteLine("Povezan sa serverom. Mozete unositi poteze: ");
+
                 while (true)
                 {
-                    Console.WriteLine("Unesite akciju(aktivacija, pomicanje, kraj): ");
+                    List<Socket> cekanje = new List<Socket> { klijentSocket };
+                    Socket.Select(cekanje, null, null, 1000);
+
+                    if(cekanje.Count > 0 ) 
+                    {
+                        string serverPoruka = PrimiPoruku(klijentSocket);
+                        Console.WriteLine(serverPoruka);
+                    }
+
+                    Console.WriteLine("Unesite akciju(aktivacija, pomicanje, izvestaj, kraj): ");
                     string akcija = Console.ReadLine()?.Trim();
 
                     if (string.IsNullOrEmpty(akcija))
@@ -44,10 +54,11 @@ namespace KlijentProjekat
                         string odgovor = PrimiPoruku(klijentSocket);
                         Console.WriteLine($"Odgovor servera: {odgovor}");
 
-                        if (odgovor.Contains("sljedeci igrac"))
+                        if (odgovor.Contains("igra je zavrsena"))
                         {
                             break;
                         }
+
                         continue;
                     }
                     else if (akcija == "aktivacija" || akcija == "pomicanje")
@@ -70,6 +81,11 @@ namespace KlijentProjekat
 
                         string odgovor = PrimiPoruku(klijentSocket);
                         Console.WriteLine($"Odgovor servera: {odgovor}");
+                    }
+                    else if (akcija == "izvestaj")
+                    {
+                        PosaljiPoruku(klijentSocket, "izvestaj");
+                        PrimiIzvestajOStanju(klijentSocket);
                     }
                     else
                     {
@@ -98,7 +114,12 @@ namespace KlijentProjekat
         {
             byte[] prijemniBafer = new byte[6000];
             int brojPrimljenihBajtova = klijentSocket.Receive(prijemniBafer);
-            return Encoding.UTF8.GetString(prijemniBafer, 0, brojPrimljenihBajtova);
+            return Encoding.UTF8.GetString(prijemniBafer, 0, brojPrimljenihBajtova).Trim();
+        }
+        private void PrimiIzvestajOStanju(Socket klijentSocket)
+        {
+            string izvestaj = PrimiPoruku(klijentSocket);
+            Console.WriteLine($"Izvestaj o stanju igre: {izvestaj}");
         }
         static void Main(string[] args)
         {
@@ -107,6 +128,5 @@ namespace KlijentProjekat
             Klijent klijent = new Klijent(serverIp, 5000);
             klijent.Pokreni(serverIp);
         }
-        }
-
+    }
 }

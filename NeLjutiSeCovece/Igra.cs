@@ -1,9 +1,7 @@
-﻿using System;
+﻿using KlijentProjekat;
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace NeLjutiSeCovece
 {
@@ -61,7 +59,7 @@ namespace NeLjutiSeCovece
             }
         }
 
-        public bool ProveriPrelapanje(Figura figura, List<Korisnik> igraci, Korisnik trnutniIgrac)
+        public bool ProveriPreklapanje(Figura figura, List<Korisnik> igraci, Korisnik trnutniIgrac)
         {
             foreach (var igrac in igraci)
             {
@@ -91,40 +89,99 @@ namespace NeLjutiSeCovece
             {
                 return "Neispravan ID figure";
             }
-                Figura figura = trenutniIgrac.Figure[potez.Id];
+            Figura figura = trenutniIgrac.Figure[potez.Id];
 
-                if (potez.Akcija == "aktivacija")
-                {
-                    if (figura.Aktivna)
-                        return "Figura je vec aktivna";
+            if (potez.Akcija == "aktivacija")
+            {
+                if (figura.Aktivna)
+                    return "Figura je vec aktivna";
 
-                    if (potez.BrojPolja != 6)
-                        return "Figura se moze aktivirati samo bacanjem broja 6.";
+                if (potez.BrojPolja != 6)
+                    return "Figura se moze aktivirati samo bacanjem broja 6.";
 
-                    figura.Pozicija = 0;
-                    figura.Aktivna = true;
-                    return "Figura uspjesno aktivirana.";
-                }
-                else if (potez.Akcija == "pomicanje")
-                {
-                    if (!figura.Aktivna)
-                        return "Figura nije aktivna";
+                figura.Pozicija = 0;
+                figura.Aktivna = true;
+                return "Figura uspjesno aktivirana.";
+            }
+            else if (potez.Akcija == "pomicanje")
+            {
+                if (!figura.Aktivna)
+                    return "Figura nije aktivna";
 
-                    if (!DaLiJePotezValidan(figura, potez.BrojPolja, trenutniIgrac.CiljPozicija))
-                        return "Potez nije validan.";
+                if (!DaLiJePotezValidan(figura, potez.BrojPolja, trenutniIgrac.CiljPozicija))
+                    return "Potez nije validan.";
 
                 AzurirajFiguru(figura, potez.BrojPolja);
-                    return "Potez uspjesno izvrsen.";
-                }
-                else if (potez.Akcija == "kraj")
+                
+
+                bool preklapanje = ProveriPreklapanje(figura, Igraci, trenutniIgrac);
+                if (preklapanje)
                 {
-                    SledeciPotez(false);
-                    return "Potez zavrsen. Sada je na potezu sljedeci igrac.";
+                    return "Figura je presla na poziciju protivnicke figure i izbacija je ig igre.";
                 }
-                else
-                {
-                    return "nepoznata akcija.";
-                }
+                return "Potez uspjesno izvrsen.";
             }
+            else if (potez.Akcija == "kraj")
+            {
+                SledeciPotez(false);
+                return "Potez zavrsen. Sada je na potezu sljedeci igrac.";
+            }
+            else
+            {
+                return "nepoznata akcija.";
+            }
+
+        }
+        public void Resetuj()
+        {
+            foreach(var igrac in Igraci)
+            {
+                
+                igrac.StratPozicija = igrac.Id * 10;
+                igrac.CiljPozicija = igrac.StratPozicija + 39;
+                
+
+                igrac.Figure = new List<Figura>
+                {
+                    new Figura{Id=0,Aktivna=false,Pozicija=-1},
+                    new Figura{Id=1,Aktivna=false,Pozicija=-1},
+                    new Figura{Id=2,Aktivna=false,Pozicija=-1},
+                    new Figura{Id=3,Aktivna=false,Pozicija=-1}
+                };
+            }
+            Zavrsena = false;
+            Console.WriteLine("Igra je resetovana i spremna za novu sesiju.");
+        }
+        public string GenerisiIzvestaj()
+        {
+            StringBuilder izvestaj = new StringBuilder();
+
+            izvestaj.AppendLine("Izvestaj o igri: ");
+            foreach (var igrac in Igraci)
+            {
+                izvestaj.AppendLine($"Igrac: {igrac.Ime}");
+                izvestaj.AppendLine($"Pocetna pozicija: {igrac.StratPozicija}, ");
+
+                foreach (var figura in igrac.Figure)
+                {
+                    string status = figura.Aktivna ? "Aktivna" : "Nije aktivna";
+                    izvestaj.AppendLine($"Figura {figura.Id}: {status} | Pozicija: {figura.Pozicija}, Udaljenost do cilja: {figura.UdaljenostDoCilja}");
+
+                }
+                izvestaj.AppendLine();
+            }
+            Korisnik trenutniIgrac = TrenutniIgrac();
+            izvestaj.AppendLine($"Trenutni igrac: {trenutniIgrac.Ime}");
+
+            if (Zavrsena)
+            {
+                izvestaj.AppendLine("Igra je zavrsena!");
+            }
+            else
+            {
+                izvestaj.AppendLine("Igra nije zavrsena.");
+            }
+            return izvestaj.ToString();
         }
     }
+}

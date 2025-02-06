@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 
 namespace NeLjutiSeCovece
 {
@@ -26,7 +22,7 @@ namespace NeLjutiSeCovece
             StratPozicija = stratPozicija;
             CiljPozicija = ciljPozicija;
             Figure = new List<Figura>();
-            for(int i=0; i<4; i++)
+            for (int i = 0; i < 4; i++)
             {
                 Figure.Add(new Figura { Id = i, Pozicija = -1, Aktivna = false, UdaljenostDoCilja = ciljPozicija });
             }
