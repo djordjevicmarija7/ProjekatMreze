@@ -10,6 +10,8 @@ namespace NeLjutiSeCovece
         public List<Korisnik> Igraci { get; set; }
         public int TrenutniIgracIndeks { get; set; }
         public bool Zavrsena { get; set; }
+        public int BrojIgraca { get; set; }
+
 
         public Igra()
         {
@@ -20,7 +22,12 @@ namespace NeLjutiSeCovece
 
         public Korisnik TrenutniIgrac()
         {
-            return Igraci[TrenutniIgracIndeks];
+           
+            if (Igraci == null || Igraci.Count == 0)
+                throw new InvalidOperationException("Lista igrača je prazna. Dodajte igrače pre početka igre.");
+
+            int index = TrenutniIgracIndeks % Igraci.Count;
+            return Igraci[index];
         }
 
         public void SledeciPotez(bool dodatniPotez)
@@ -30,6 +37,19 @@ namespace NeLjutiSeCovece
                 TrenutniIgracIndeks = (TrenutniIgracIndeks + 1) % Igraci.Count;
             }
         }
+
+        public bool IgraJeZavrsena(Korisnik igrac)
+        {
+            int countFinished = 0;
+            foreach (var figura in igrac.Figure)
+            {
+                // Pretpostavljamo da je figura u cilju ako je aktivna i njena pozicija jednaka cilju igrača
+                if (figura.Aktivna && figura.Pozicija == igrac.CiljPozicija)
+                    countFinished++;
+            }
+            return countFinished == igrac.Figure.Count;
+        }
+
         public bool DaLiJePotezValidan(Figura figura, int rezultatKocke, int CiljPozicija)
         {
             if (!figura.Aktivna && rezultatKocke == 6)
@@ -80,7 +100,7 @@ namespace NeLjutiSeCovece
         }
         public string ValidirajPotez(Potez potez)
         {
-            Console.WriteLine($"Validacija poteza: Akcija={potez.Akcija}");
+            Console.WriteLine($"Validacija poteza: Akcija={potez.Akcija}, Rezultat kockice={potez.BrojPolja}\n");
             potez.Akcija = potez.Akcija.Trim().ToLower();
 
             Korisnik trenutniIgrac = TrenutniIgrac();
@@ -99,9 +119,25 @@ namespace NeLjutiSeCovece
                 if (potez.BrojPolja != 6)
                     return "Figura se moze aktivirati samo bacanjem broja 6.";
 
-                figura.Pozicija = 0;
+                figura.Pozicija = trenutniIgrac.StratPozicija;
                 figura.Aktivna = true;
-                return "Figura uspjesno aktivirana.";
+                if (IgraJeZavrsena(trenutniIgrac))
+                {
+                    Zavrsena = true;
+                    return $" Čestitamo, {trenutniIgrac.Ime} je pobedio!";
+                }
+
+                // Ako rezultat kocke nije 6, prelazimo na narednog igrača
+                if (potez.BrojPolja != 6)
+                {
+                    SledeciPotez(false);
+                    return "Figura uspešno aktivirana. Vaš potez je završen.";
+                }
+                else
+                {
+                    SledeciPotez(true);
+                    return "Figura uspešno aktivirana. Imate dodatni potez.";
+                }
             }
             else if (potez.Akcija == "pomicanje")
             {
@@ -115,17 +151,28 @@ namespace NeLjutiSeCovece
                 
 
                 bool preklapanje = ProveriPreklapanje(figura, Igraci, trenutniIgrac);
-                if (preklapanje)
+                string poruka = preklapanje ?
+                    "Figura je presla na poziciju protivničke figure i izbaci je iz igre." :
+                    "Potez uspešno izvršen.";
+                if (IgraJeZavrsena(trenutniIgrac))
                 {
-                    return "Figura je presla na poziciju protivnicke figure i izbacija je ig igre.";
+                    Zavrsena = true;
+                    return $"Potez uspešno izvršen. Čestitamo, {trenutniIgrac.Ime} je pobedio!";
                 }
-                return "Potez uspjesno izvrsen.";
+
+                if (potez.BrojPolja != 6)
+                {
+                    SledeciPotez(false);
+                    poruka += " Vaš potez je završen.";
+                }
+                else
+                {
+                    SledeciPotez(true);
+                    poruka += " Imate dodatni potez.";
+                }
+                return poruka;
             }
-            else if (potez.Akcija == "kraj")
-            {
-                SledeciPotez(false);
-                return "Potez zavrsen. Sada je na potezu sljedeci igrac.";
-            }
+  
             else
             {
                 return "nepoznata akcija.";

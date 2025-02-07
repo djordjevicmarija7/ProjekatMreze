@@ -1,78 +1,55 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 
 namespace KlijentProjekat
 {
     public class Klijent
     {
-        private const int DefaultPort = 5000;
+        private const int Port = 5000;
         private string ServerIp;
-        private int Port;
+        private Socket klijentSocket;
+        private string ime; // Ime lokalnog igrača
 
-        public Klijent(string serverIp, int port = DefaultPort)
+        public Klijent(string serverIp, string ime, int port = Port)
         {
             ServerIp = serverIp;
-            Port = port;
+            this.ime = ime;
         }
 
-        public void Pokreni(string ipServera)
+        public void Pokreni()
         {
-            Socket klijentSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            IPEndPoint serverEp = new IPEndPoint(IPAddress.Parse(ipServera), Port);
+            klijentSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            IPEndPoint serverEP = new IPEndPoint(IPAddress.Parse(ServerIp), Port);
+
             try
             {
-                klijentSocket.Connect(serverEp);
-                Console.WriteLine("Povezan sa serverom. Mozete unositi poteze: ");
+                klijentSocket.Connect(serverEP);
+                Console.WriteLine("Povezan sa serverom. Čekate azuriranje igre...");
+                // Postavljamo neblokirajući režim
+                klijentSocket.Blocking = false;
+
+                // Beskonačna petlja – klijent stalno prima izveštaje sa servera
                 while (true)
                 {
-                    Console.WriteLine("Unesite akciju(aktivacija, pomicanje, kraj): ");
-                    string akcija = Console.ReadLine()?.Trim();
-
-                    if (string.IsNullOrEmpty(akcija))
+                    string update = PrimiPoruku();
+                    if (!string.IsNullOrEmpty(update))
                     {
-                        Console.WriteLine("Akcija ne moze biti prazna. Pokusajte ponovo.");
-                        continue;
-                    }
-                    if (akcija == "kraj")
-                    {
-                        PosaljiPoruku(klijentSocket, $"{akcija}\n");
-                        string odgovor = PrimiPoruku(klijentSocket);
-                        Console.WriteLine($"Odgovor servera: {odgovor}");
+                        Console.WriteLine("\n--- Azuriranje igre ---");
+                        Console.WriteLine(update);
 
-                        if (odgovor.Contains("sljedeci igrac"))
+                        // Provera: ako je u izveštaju naznačeno da je na potezu
+                        // naš igrač (preko linije "Trenutni igrač: <ime>"), onda pokrećemo unos poteza.
+                        if (update.Contains($"Trenutni igrač: {ime}"))
                         {
-                            break;
+                            Console.WriteLine("\n*** Vaš je potez! ***");
+                            ProcessirajPotez();
                         }
-                        continue;
                     }
-                    else if (akcija == "aktivacija" || akcija == "pomicanje")
-                    {
-                        Console.WriteLine("Unesite ID figure(npr. 0, 1, 2...):");
-                        string idFigure = Console.ReadLine()?.Trim();
-
-                        Console.WriteLine("Unesite broj polja (za aktivaciju =6 ili broj za pomicanje):");
-                        string brojPolja = Console.ReadLine()?.Trim();
-
-                        if (string.IsNullOrEmpty(idFigure) || string.IsNullOrEmpty(brojPolja))
-                        {
-                            Console.WriteLine("Greška: Svi parametri moraju biti uneseni.");
-                            continue;
-                        }
-
-                        string poruka = $"{akcija}\n{idFigure}\n{brojPolja}";
-                        Console.WriteLine($"Poruka koja se šalje serveru: '{poruka}'");
-                        PosaljiPoruku(klijentSocket, poruka);
-
-                        string odgovor = PrimiPoruku(klijentSocket);
-                        Console.WriteLine($"Odgovor servera: {odgovor}");
-                    }
-                    else
-                    {
-                        Console.WriteLine("Nepoznata akcija. Pokušajte ponovo.");
-                    }
+                    // Ako nema poruke, sačekaj malo pre ponovnog pokušaja
+                    Thread.Sleep(1000);
                 }
             }
             catch (Exception ex)
@@ -86,25 +63,118 @@ namespace KlijentProjekat
             }
         }
 
-        private void PosaljiPoruku(Socket klijentSocket, string poruka)
+        // Metoda koja omogućava unos poteza od strane igrača
+        private void ProcessirajPotez()
+        {
+            bool turnOngoing = true;
+            while (turnOngoing)
+            {
+                Console.WriteLine("Unesite rezultat bacanja kockice:");
+                string diceInput = Console.ReadLine();
+                if (!int.TryParse(diceInput, out int diceResult))
+                {
+                    Console.WriteLine("Neispravan rezultat kockice. Pokušajte ponovo.");
+                    continue;
+                }
+
+                Console.WriteLine("Unesite akciju (aktivacija, pomicanje):");
+                string akcija = Console.ReadLine()?.Trim().ToLower();
+                if (string.IsNullOrEmpty(akcija))
+                {
+                    Console.WriteLine("Akcija ne može biti prazna.");
+                    continue;
+                }
+
+                Console.WriteLine("Unesite ID figure:");
+                string idInput = Console.ReadLine();
+                if (!int.TryParse(idInput, out int idFigure))
+                {
+                    Console.WriteLine("Neispravan unos ID figure.");
+                    continue;
+                }
+
+                // Sastavljamo poruku (tri reda): akcija, ID figure, rezultat bacanja kockice
+                string poruka = $"{akcija}\n{idFigure}\n{diceResult}";
+                PosaljiPoruku(poruka);
+                string odgovor = PrimiPoruku();
+                Console.WriteLine("Odgovor servera: " + odgovor);
+
+                // Ako odgovor sadrži "dodatni potez", igrač dobija još jedan potez,
+                // pa se ponovo prikazuje prompt za unos rezultata kockice.
+                if (!odgovor.ToLower().Contains("dodatni potez"))
+                {
+                    turnOngoing = false;
+                }
+                else
+                {
+                    Console.WriteLine("Imate dodatni potez. Unesite rezultat bacanja kockice za dodatni potez.");
+                    Thread.Sleep(500); // mala pauza radi jasnijeg prikaza
+                }
+            }
+        }
+
+
+        private void PosaljiPoruku(string poruka)
         {
             byte[] podaci = Encoding.UTF8.GetBytes(poruka);
-            klijentSocket.Send(podaci);
+            try
+            {
+                klijentSocket.Send(podaci);
+            }
+            catch (SocketException ex)
+            {
+                Console.WriteLine($"Greška pri slanju poruke: {ex.Message}");
+            }
         }
 
-        private string PrimiPoruku(Socket klijentSocket)
+        private string PrimiPoruku()
         {
-            byte[] prijemniBafer = new byte[6000];
-            int brojPrimljenihBajtova = klijentSocket.Receive(prijemniBafer);
-            return Encoding.UTF8.GetString(prijemniBafer, 0, brojPrimljenihBajtova);
+            byte[] buffer = new byte[2048];
+            int brojPokusaja = 0;
+            while (true)
+            {
+                try
+                {
+                    if (klijentSocket.Poll(1500000, SelectMode.SelectRead))
+                    {
+                        int primljeno = klijentSocket.Receive(buffer);
+                        if (primljeno > 0)
+                        {
+                            string poruka= Encoding.UTF8.GetString(buffer, 0, primljeno);
+                            
+                            return poruka;
+                        }
+                    }
+                    else
+                    {
+                        brojPokusaja++;
+                        if (brojPokusaja >= 5)
+                        {
+                            return "";
+                        }
+                    }
+                }
+                catch (SocketException ex)
+                {
+                    if (ex.SocketErrorCode == SocketError.WouldBlock)
+                        continue;
+                    Console.WriteLine($"Greška pri prijemu poruke: {ex.Message}");
+                    break;
+                }
+            }
+            return "";
         }
+
         static void Main(string[] args)
         {
-            Console.WriteLine("Unesite Ip adresu servera:");
+            Console.WriteLine("Unesite IP adresu servera:");
             string serverIp = Console.ReadLine();
-            Klijent klijent = new Klijent(serverIp, 5000);
-            klijent.Pokreni(serverIp);
+
+            Console.WriteLine("Unesite vaše ime:");
+            string ime = Console.ReadLine();
+
+            Klijent klijent = new Klijent(serverIp, ime);
+            klijent.Pokreni();
         }
     }
-
 }
