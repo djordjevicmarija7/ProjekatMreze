@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Policy;
 using System.Text;
 using System.Threading;
 
@@ -12,7 +13,7 @@ namespace NeLjutiSeCovece
         private const int Port = 5000;
         private Socket serverSocket;
         private List<Socket> klijenti = new List<Socket>();
-        private int maxIgraca; // dinamički broj igrača (2, 3 ili 4)
+        private int maxIgraca;
         private Igra igra;
 
         public Server(Igra igra, int maxIgraca)
@@ -21,7 +22,7 @@ namespace NeLjutiSeCovece
                 throw new ArgumentException("Broj igrača mora biti 2, 3 ili 4.");
 
             this.igra = igra;
-            this.igra.BrojIgraca = maxIgraca; // prosleđujemo broj igrača modelu igre
+            this.igra.BrojIgraca = maxIgraca; 
             this.maxIgraca = maxIgraca;
         }
 
@@ -55,25 +56,24 @@ namespace NeLjutiSeCovece
                 }
             }
 
-            // Nakon što se svi igrači povežu, šaljemo inicijalnu poruku sa informacijom ko je prvi na potezu.
             string initialMsg = $"Igra počinje! Trenutni igrač: {igra.TrenutniIgrac().Ime}";
             ObavestiSve(initialMsg);
             Console.WriteLine("Poslat je početni update svim klijentima.");
 
-            // Pokrećemo glavnu petlju igre
+         
             PokreniIgru();
         }
         private void PokreniIgru()
         {
             Console.WriteLine("Igra počinje!");
-            // Glavna petlja igre – dok igra nije završena
+
             while (!igra.Zavrsena)
             {
                 foreach (var klijent in klijenti)
                 {
                     try
                     {
-                        // Koristimo Poll da proverimo da li je klijent spreman za čitanje (1,5 sekundi)
+    
                         if (klijent.Poll(1500000, SelectMode.SelectRead))
                         {
                             byte[] buffer = new byte[1024];
@@ -90,26 +90,22 @@ namespace NeLjutiSeCovece
                     {
                         if (ex.SocketErrorCode == SocketError.WouldBlock)
                         {
-                            // Nema novih podataka – nastavljamo petlju
+                         
                             continue;
                         }
                         Console.WriteLine($"Greška pri prijemu podataka od {klijent.RemoteEndPoint}: {ex.Message}");
                     }
                 }
-                // Pauza radi smanjenja potrošnje CPU resursa
+
                 Thread.Sleep(100);
             }
-            // Kada se igra završi, obavesti sve klijente
+
             ObavestiSve("Igra je završena!");
         }
 
         private void ObradiPoruku(Socket klijent, string poruka)
         {
           
-            // Očekivani format poruke:  
-            // Prvi red: akcija ("aktivacija" ili "pomicanje")  
-            // Drugi red: ID figure  
-            // Treći red: broj polja  
             Potez potez;
             try
             {
@@ -131,7 +127,7 @@ namespace NeLjutiSeCovece
                 return;
             }
 
-            // Validacija poteza (metoda u klasi Igra proverava pravila igre)
+           
             string rezultat = igra.ValidirajPotez(potez);
             PosaljiPoruku(klijent, rezultat);
             if(potez.BrojPolja!=6)
@@ -172,9 +168,10 @@ namespace NeLjutiSeCovece
                 Console.WriteLine($"Greška pri slanju poruke klijentu {klijent.RemoteEndPoint}: {ex.Message}");
             }
         }
+        
         static void Main(string[] args)
         {
-            // Unos broja igrača
+        
             Console.WriteLine("Unesite broj igrača za igru (2, 3 ili 4):");
             int brojIgraca;
             while (!int.TryParse(Console.ReadLine(), out brojIgraca) || brojIgraca < 2 || brojIgraca > 4)
@@ -182,7 +179,6 @@ namespace NeLjutiSeCovece
                 Console.WriteLine("Neispravan unos! Molimo unesite 2, 3 ili 4.");
             }
 
-            // Unos dimenzija table – broj ćelija na obimu
             Console.WriteLine("Unesite broj ćelija na obimu table (mora biti veći od 16 i deljiv sa 4):");
             int boardSize;
             while (!int.TryParse(Console.ReadLine(), out boardSize) || boardSize <= 16 || boardSize % 4 != 0)
@@ -190,34 +186,51 @@ namespace NeLjutiSeCovece
                 Console.WriteLine("Neispravan unos! Broj ćelija mora biti veći od 16 i deljiv sa 4. Pokušajte ponovo:");
             }
 
-            // Računamo dužinu jednog segmenta (kvadranta)
             int segment = boardSize / 4;
 
-            // Kreiramo instancu igre
             Igra igra = new Igra();
 
-            // Određivanje kvadranta (pozicija) na osnovu broja igrača:
-            // Ako su 4 igrača, koriste se svi kvadranti [0,1,2,3]
-            // Ako su 3 igrača, koristićemo kvadrante [0,1,3] (preskačemo kvadrant 2)
-            // Ako su 2 igrača, koristićemo kvadrante [0,2] (suprotne strane)
+           
             int[] quadrantIndices;
             if (brojIgraca == 4)
                 quadrantIndices = new int[] { 0, 1, 2, 3 };
             else if (brojIgraca == 3)
                 quadrantIndices = new int[] { 0, 1, 3 };
-            else // brojIgraca == 2
+            else 
                 quadrantIndices = new int[] { 0, 2 };
 
-            // Dodavanje igrača u igru sa proračunatim početnim pozicijama i krajnjim ciljevima
+        
             for (int i = 0; i < brojIgraca; i++)
             {
                 int startPoz = quadrantIndices[i] * segment;
-                int ciljPoz = startPoz +boardSize+4;  // Krajnji cilj je za segment unapred
+                int ciljPoz = startPoz +boardSize+4;  
+
+                string ime;
+                if (i == 0)
+                {
+                    ime="crevna";
+                }
+                else if (i == 1)
+                {
+                    ime= "plava";
+                }
+                else if (i == 2)
+                {
+                    ime= "zuta";
+                }
+                if (i == 3)
+                {
+                    ime= "zelena";
+                }
+                else
+                {
+                    ime ="";
+                }
 
                 igra.Igraci.Add(new Korisnik
                 {
                     Id = i,
-                    Ime = $"Igrac{i + 1}",
+                    Ime = ime,
                     StratPozicija = startPoz,
                     CiljPozicija = ciljPoz,
                     Figure = new List<Figura>
@@ -230,7 +243,6 @@ namespace NeLjutiSeCovece
                 });
             }
 
-            // Ispis informacija o inicijalizovanim igračima
             Console.WriteLine("\nInicijalizovani igrači sa početnim pozicijama i krajnjim ciljevima:");
             foreach (var igrac in igra.Igraci)
             {
@@ -238,7 +250,7 @@ namespace NeLjutiSeCovece
             }
             Console.WriteLine();
 
-            // Kreiramo server i pokrećemo igru
+        
             Server server = new Server(igra, brojIgraca);
             server.Pokreni();
         }

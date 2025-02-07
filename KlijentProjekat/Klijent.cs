@@ -11,7 +11,7 @@ namespace KlijentProjekat
         private const int Port = 5000;
         private string ServerIp;
         private Socket klijentSocket;
-        private string ime; // Ime lokalnog igrača
+        private string ime; 
 
         public Klijent(string serverIp, string ime, int port = Port)
         {
@@ -28,10 +28,10 @@ namespace KlijentProjekat
             {
                 klijentSocket.Connect(serverEP);
                 Console.WriteLine("Povezan sa serverom. Čekate azuriranje igre...");
-                // Postavljamo neblokirajući režim
+             
                 klijentSocket.Blocking = false;
 
-                // Beskonačna petlja – klijent stalno prima izveštaje sa servera
+           
                 while (true)
                 {
                     string update = PrimiPoruku();
@@ -40,15 +40,14 @@ namespace KlijentProjekat
                         Console.WriteLine("\n--- Azuriranje igre ---");
                         Console.WriteLine(update);
 
-                        // Provera: ako je u izveštaju naznačeno da je na potezu
-                        // naš igrač (preko linije "Trenutni igrač: <ime>"), onda pokrećemo unos poteza.
+                     
                         if (update.Contains($"Trenutni igrač: {ime}"))
                         {
                             Console.WriteLine("\n*** Vaš je potez! ***");
                             ProcessirajPotez();
                         }
                     }
-                    // Ako nema poruke, sačekaj malo pre ponovnog pokušaja
+                   
                     Thread.Sleep(1000);
                 }
             }
@@ -63,7 +62,7 @@ namespace KlijentProjekat
             }
         }
 
-        // Metoda koja omogućava unos poteza od strane igrača
+       
         private void ProcessirajPotez()
         {
             bool turnOngoing = true;
@@ -93,14 +92,13 @@ namespace KlijentProjekat
                     continue;
                 }
 
-                // Sastavljamo poruku (tri reda): akcija, ID figure, rezultat bacanja kockice
+                
                 string poruka = $"{akcija}\n{idFigure}\n{diceResult}";
                 PosaljiPoruku(poruka);
                 string odgovor = PrimiPoruku();
                 Console.WriteLine("Odgovor servera: " + odgovor);
 
-                // Ako odgovor sadrži "dodatni potez", igrač dobija još jedan potez,
-                // pa se ponovo prikazuje prompt za unos rezultata kockice.
+              
                 if (!odgovor.ToLower().Contains("dodatni potez"))
                 {
                     turnOngoing = false;
@@ -108,7 +106,7 @@ namespace KlijentProjekat
                 else
                 {
                     Console.WriteLine("Imate dodatni potez. Unesite rezultat bacanja kockice za dodatni potez.");
-                    Thread.Sleep(500); // mala pauza radi jasnijeg prikaza
+                    Thread.Sleep(500); 
                 }
             }
         }

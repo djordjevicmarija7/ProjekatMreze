@@ -43,47 +43,94 @@ namespace NeLjutiSeCovece
             int countFinished = 0;
             foreach (var figura in igrac.Figure)
             {
-                // Pretpostavljamo da je figura u cilju ako je aktivna i njena pozicija jednaka cilju igrača
                 if (figura.Aktivna && figura.Pozicija == igrac.CiljPozicija)
                     countFinished++;
             }
             return countFinished == igrac.Figure.Count;
         }
 
-        public bool DaLiJePotezValidan(Figura figura, int rezultatKocke, int CiljPozicija)
+        public bool DaLiJePotezValidan(Figura figura, int rezultatKocke, int ciljPozicija, Korisnik trenutniIgrac)
         {
+            int homeStart = ciljPozicija - 3; 
+            int ciljPoz = trenutniIgrac.CiljPozicija;
+            int novaPozicija = figura.Pozicija + rezultatKocke;
+
             if (!figura.Aktivna && rezultatKocke == 6)
             {
-                return true; //aktivacija
+                return true;
             }
-            if (figura.Aktivna && figura.Pozicija + rezultatKocke <= CiljPozicija)
+
+            if (figura.Pozicija < homeStart)
             {
-                return true; //pomeranje figure unutar granica cilja 
+                if (novaPozicija < homeStart)
+                {
+                    return true;
+                }
+                else
+                {
+                    if (novaPozicija > ciljPozicija)
+                        return false;
+
+                    foreach (var drugaFigura in trenutniIgrac.Figure)
+                    {
+                        if (drugaFigura.Id != figura.Id && drugaFigura.Aktivna && drugaFigura.Pozicija == novaPozicija && novaPozicija >= homeStart)
+                        {
+                            return false; 
+                        }
+                    }
+                    return true;
+                }
+              
+              
             }
-            return false;
+            else 
+            {
+                if (novaPozicija > ciljPozicija)
+                    return false;
+
+                foreach (var drugaFigura in trenutniIgrac.Figure)
+                {
+                    if (drugaFigura.Id != figura.Id && drugaFigura.Aktivna && drugaFigura.Pozicija == novaPozicija && novaPozicija >= homeStart)
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
         }
 
-        public void AzurirajFiguru(Figura figura, int rezultatKocke)
+
+        public void AzurirajFiguru(Figura figura, int rezultatKocke, Korisnik trenutniIgrac)
         {
             if (!figura.Aktivna && rezultatKocke == 6)
             {
                 figura.Aktivna = true;
-                figura.Pozicija = 0;
+                figura.Pozicija = trenutniIgrac.StratPozicija;
                 figura.UdaljenostDoCilja = figura.Pozicija;
             }
             else if (figura.Aktivna)
             {
                 figura.Pozicija += rezultatKocke;
                 figura.UdaljenostDoCilja -= rezultatKocke;
+                if (figura.Pozicija >= (figura.UdaljenostDoCilja - 3))
+                {
+                    Console.WriteLine($"Cestitamo, figura je u kucici! Trenutna pozicija figure: {figura.Pozicija}");
+                }
                 Console.WriteLine($"Trenutna pozicija figure: {figura.Pozicija}");
             }
         }
 
-        public bool ProveriPreklapanje(Figura figura, List<Korisnik> igraci, Korisnik trnutniIgrac)
+        public bool ProveriPreklapanje(Figura figura, List<Korisnik> igraci, Korisnik trenutniIgrac)
         {
+            int homeStart = trenutniIgrac.CiljPozicija - 3;
+
+            if (figura.Pozicija >= homeStart)
+                return false;
+
+
             foreach (var igrac in igraci)
             {
-                if (igrac.Id != trnutniIgrac.Id)
+                if (igrac.Id != trenutniIgrac.Id)
                 {
                     foreach (var protivnickaFigura in igrac.Figure)
                     {
@@ -127,7 +174,7 @@ namespace NeLjutiSeCovece
                     return $" Čestitamo, {trenutniIgrac.Ime} je pobedio!";
                 }
 
-                // Ako rezultat kocke nije 6, prelazimo na narednog igrača
+                
                 if (potez.BrojPolja != 6)
                 {
                     SledeciPotez(false);
@@ -144,10 +191,19 @@ namespace NeLjutiSeCovece
                 if (!figura.Aktivna)
                     return "Figura nije aktivna";
 
-                if (!DaLiJePotezValidan(figura, potez.BrojPolja, trenutniIgrac.CiljPozicija))
+                int novaPozicija = figura.Pozicija + potez.BrojPolja;
+
+                
+                if (novaPozicija > trenutniIgrac.CiljPozicija)
+                {
+                    SledeciPotez(false);  
+                    return "Prekoračili ste ciljnu poziciju. Vaš potez je završen.";
+                }
+
+                if (!DaLiJePotezValidan(figura, potez.BrojPolja, trenutniIgrac.CiljPozicija, trenutniIgrac))
                     return "Potez nije validan.";
 
-                AzurirajFiguru(figura, potez.BrojPolja);
+                AzurirajFiguru(figura, potez.BrojPolja, trenutniIgrac);
                 
 
                 bool preklapanje = ProveriPreklapanje(figura, Igraci, trenutniIgrac);
@@ -218,7 +274,7 @@ namespace NeLjutiSeCovece
                 izvestaj.AppendLine();
             }
             Korisnik trenutniIgrac = TrenutniIgrac();
-            izvestaj.AppendLine($"Trenutni igrac: {trenutniIgrac.Ime}");
+            izvestaj.AppendLine($"Trenutni igrač: {trenutniIgrac.Ime}");
 
             if (Zavrsena)
             {
