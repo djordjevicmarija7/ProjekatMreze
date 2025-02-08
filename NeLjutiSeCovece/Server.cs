@@ -243,7 +243,7 @@ namespace NeLjutiSeCovece
             int prethodniBrojIgraca = klijenti.Count;
 
             ObavestiSve("Igra je završena!\n");
-            ObavestiSve("Molimo unesite 'PRIJAVA' ako želite da se ponovo prijavite za novu igru.");
+            ObavestiSve("Ukoliko želite da odigrate još jednu partiju unesite 'DA'.");
             Console.WriteLine("Čekam prijave za novu igru (30 sekundi)...");
 
             List<Socket> rejoinClients = new List<Socket>();
@@ -263,7 +263,7 @@ namespace NeLjutiSeCovece
                             if (primljeno > 0)
                             {
                                 string odgovor = Encoding.UTF8.GetString(buffer, 0, primljeno).Trim();
-                                if (odgovor.Equals("PRIJAVA", StringComparison.OrdinalIgnoreCase))
+                                if (odgovor.Equals("DA", StringComparison.OrdinalIgnoreCase))
                                 {
                                     if (!rejoinClients.Contains(klijent))
                                     {
@@ -316,6 +316,9 @@ namespace NeLjutiSeCovece
             Console.WriteLine("Svi igrači su se prijavili za novu igru. Igra se resetuje.");
 
             igra.Resetuj();
+            Thread.Sleep(500);
+            string initialMsg = $"Igra počinje! Trenutni igrač: {igra.TrenutniIgrac().Ime}";
+            ObavestiSve(initialMsg);
             PokreniIgru();
         }
 

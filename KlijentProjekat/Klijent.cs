@@ -110,6 +110,14 @@ namespace KlijentProjekat
                     return;
                 }
 
+                if(poruka.Contains("Ukoliko želite da odigrate još jednu partiju unesite 'DA'"))
+                {
+                    Console.WriteLine("Unesite DA za ponovnu prijavu: ");
+                    string odgovor = Console.ReadLine();
+                    PosaljiPoruku(odgovor);
+                    return;
+                }
+
                 if (poruka.Contains("Trenutni igrač:") && poruka.Contains(ime))
                 {
                     Console.WriteLine("\n*** Vaš je potez! ***");
