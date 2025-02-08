@@ -72,6 +72,7 @@ namespace KlijentProjekat
                 Array.Copy(podaci, headerIzvestaj.Length, izvestajPodaci, 0, izvestajPodaci.Length);
                 try
                 {
+                    Thread.Sleep(1000);
                     using (MemoryStream ms = new MemoryStream(izvestajPodaci))
                     {
                         BinaryFormatter bf = new BinaryFormatter();
@@ -189,7 +190,6 @@ namespace KlijentProjekat
                 }
                 else
                 {
-                    Console.WriteLine("Imate dodatni potez. Unesite rezultat bacanja kockice za dodatni potez.");
                     Thread.Sleep(500);
                 }
             }
