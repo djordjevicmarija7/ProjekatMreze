@@ -24,12 +24,13 @@ namespace KlijentProjekat
         private const int Port = 5000;
         private string ServerIp;
         private Socket klijentSocket;
-        private string ime;
+        // Varijabla 'ime' će sadržavati dodeljenu boju
+        private string ime = "";
 
-        public Klijent(string serverIp, string ime, int port = Port)
+        public Klijent(string serverIp, string ime = "", int port = Port)
         {
             ServerIp = serverIp;
-            this.ime = ime;
+            this.ime = ime; // Inicijalno prazan; postavit će se nakon dodele boje od strane servera
         }
 
         public void Pokreni()
@@ -76,11 +77,11 @@ namespace KlijentProjekat
             string headerReport = "REPORT:";
             string headerText = "TEXT:";
 
-            // Provjera da li podaci započinju s headerom "REPORT:"
-            if (updateData.Length >= headerReport.Length &&
-                Encoding.UTF8.GetString(updateData, 0, headerReport.Length) == headerReport)
+            string dataString = Encoding.UTF8.GetString(updateData);
+
+            // Obrada serijalizovanog izveštaja
+            if (dataString.StartsWith(headerReport))
             {
-                // Obrada serijalizovanog izveštaja
                 byte[] reportData = new byte[updateData.Length - headerReport.Length];
                 Array.Copy(updateData, headerReport.Length, reportData, 0, reportData.Length);
                 try
@@ -108,18 +109,24 @@ namespace KlijentProjekat
                     Console.WriteLine("Greška pri deserijalizaciji izveštaja: " + ex.Message);
                 }
             }
-            // Ako je poruka običan tekst (header "TEXT:")
-            else if (updateData.Length >= headerText.Length &&
-                     Encoding.UTF8.GetString(updateData, 0, headerText.Length) == headerText)
+            // Obrada običnih tekstualnih poruka
+            else if (dataString.StartsWith(headerText))
             {
-                string poruka = Encoding.UTF8.GetString(updateData);
-                // Uklanjamo header ("TEXT:") – koji je dugačak 5 karaktera
-                poruka = poruka.Substring(headerText.Length);
+                string poruka = dataString.Substring(headerText.Length);
                 Console.WriteLine("\n--- Ažuriranje igre ---");
                 Console.WriteLine(poruka);
 
-                // Ako primljena poruka sadrži informaciju o tome ko je na potezu, pozivamo unos poteza
-                if (poruka.Contains($"Trenutni igrač: {ime}"))
+                // Ako poruka sadrži potvrdu dodele boje, postavi varijablu 'ime'
+                if (poruka.StartsWith("Boja uspseno odabrana:"))
+                {
+                    string odabranaBoja = poruka.Substring("Boja uspseno odabrana:".Length).Trim();
+                    ime = odabranaBoja;
+                    Console.WriteLine("Vaša boja je dodeljena: " + ime);
+                    return;
+                }
+
+                // Ako poruka sadrži informaciju o potezu i naše ime (boju) je uključeno, pokreni unos poteza
+                if (poruka.Contains("Trenutni igrač:") && poruka.Contains(ime))
                 {
                     Console.WriteLine("\n*** Vaš je potez! ***");
                     ProcessirajPotez();
@@ -127,11 +134,10 @@ namespace KlijentProjekat
             }
             else
             {
-                // Ako header nije prepoznat, tretiramo poruku kao plain text
-                string poruka = Encoding.UTF8.GetString(updateData);
+                // Ako header nije prepoznat, tretiramo poruku kao običan tekst
                 Console.WriteLine("\n--- Ažuriranje igre ---");
-                Console.WriteLine(poruka);
-                if (poruka.Contains($"Trenutni igrač: {ime}"))
+                Console.WriteLine(dataString);
+                if (dataString.Contains("Trenutni igrač:") && dataString.Contains(ime))
                 {
                     Console.WriteLine("\n*** Vaš je potez! ***");
                     ProcessirajPotez();
@@ -266,10 +272,8 @@ namespace KlijentProjekat
             Console.WriteLine("Unesite IP adresu servera:");
             string serverIp = Console.ReadLine();
 
-            Console.WriteLine("Unesite vaše ime:");
-            string ime = Console.ReadLine();
-
-            Klijent klijent = new Klijent(serverIp, ime);
+            // Ne tražimo unos imena (boja će biti automatski dodeljena)
+            Klijent klijent = new Klijent(serverIp);
             klijent.Pokreni();
         }
     }

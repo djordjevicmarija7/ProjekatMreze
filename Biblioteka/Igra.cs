@@ -41,9 +41,10 @@ namespace Biblioteka
         public bool IgraJeZavrsena(Korisnik igrac)
         {
             int countFinished = 0;
+            int kucicaPocetak=igrac.CiljPozicija-3;
             foreach (var figura in igrac.Figure)
             {
-                if (figura.Aktivna && figura.Pozicija == igrac.CiljPozicija)
+                if (figura.Aktivna && figura.Pozicija >=kucicaPocetak)
                     countFinished++;
             }
             return countFinished == igrac.Figure.Count;

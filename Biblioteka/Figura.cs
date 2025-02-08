@@ -1,5 +1,8 @@
-﻿namespace Biblioteka
+﻿using System;
+
+namespace Biblioteka
 {
+    [Serializable]
     public class Figura
     {
         public int Id { get; set; }
