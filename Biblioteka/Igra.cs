@@ -22,7 +22,7 @@ namespace Biblioteka
 
         public Korisnik TrenutniIgrac()
         {
-           
+
             if (Igraci == null || Igraci.Count == 0)
                 throw new InvalidOperationException("Lista igrača je prazna. Dodajte igrače pre početka igre.");
 
@@ -41,10 +41,10 @@ namespace Biblioteka
         public bool IgraJeZavrsena(Korisnik igrac)
         {
             int countFinished = 0;
-            int kucicaPocetak=igrac.CiljPozicija-3;
+            int kucicaPocetak = igrac.CiljPozicija - 3;
             foreach (var figura in igrac.Figure)
             {
-                if (figura.Aktivna && figura.Pozicija >=kucicaPocetak)
+                if (figura.Aktivna && figura.Pozicija >= kucicaPocetak)
                     countFinished++;
             }
             return countFinished == igrac.Figure.Count;
@@ -52,7 +52,7 @@ namespace Biblioteka
 
         public bool DaLiJePotezValidan(Figura figura, int rezultatKocke, int ciljPozicija, Korisnik trenutniIgrac)
         {
-            int homeStart = ciljPozicija - 3; 
+            int homeStart = ciljPozicija - 3;
             int ciljPoz = trenutniIgrac.CiljPozicija;
             int novaPozicija = figura.Pozicija + rezultatKocke;
 
@@ -76,15 +76,15 @@ namespace Biblioteka
                     {
                         if (drugaFigura.Id != figura.Id && drugaFigura.Aktivna && drugaFigura.Pozicija == novaPozicija && novaPozicija >= homeStart)
                         {
-                            return false; 
+                            return false;
                         }
                     }
                     return true;
                 }
-              
-              
+
+
             }
-            else 
+            else
             {
                 if (novaPozicija > ciljPozicija)
                     return false;
@@ -175,7 +175,7 @@ namespace Biblioteka
                     return $" Čestitamo, {trenutniIgrac.Ime} je pobedio!";
                 }
 
-                
+
                 if (potez.BrojPolja != 6)
                 {
                     SledeciPotez(false);
@@ -194,10 +194,10 @@ namespace Biblioteka
 
                 int novaPozicija = figura.Pozicija + potez.BrojPolja;
 
-                
+
                 if (novaPozicija > trenutniIgrac.CiljPozicija)
                 {
-                    SledeciPotez(false);  
+                    SledeciPotez(false);
                     return "Prekoračili ste ciljnu poziciju. Vaš potez je završen.";
                 }
 
@@ -205,7 +205,7 @@ namespace Biblioteka
                     return "Potez nije validan.";
 
                 AzurirajFiguru(figura, potez.BrojPolja, trenutniIgrac);
-                
+
 
                 bool preklapanje = ProveriPreklapanje(figura, Igraci, trenutniIgrac);
                 string poruka = preklapanje ?
@@ -229,7 +229,7 @@ namespace Biblioteka
                 }
                 return poruka;
             }
-  
+
             else
             {
                 return "nepoznata akcija.";
@@ -238,12 +238,12 @@ namespace Biblioteka
         }
         public void Resetuj()
         {
-            foreach(var igrac in Igraci)
+            foreach (var igrac in Igraci)
             {
-                
+
                 igrac.StratPozicija = igrac.Id * 10;
                 igrac.CiljPozicija = igrac.StratPozicija + 39;
-                
+
 
                 igrac.Figure = new List<Figura>
                 {

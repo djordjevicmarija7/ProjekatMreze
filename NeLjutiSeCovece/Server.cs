@@ -1,14 +1,12 @@
-﻿using System;
+﻿using Biblioteka;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.Serialization.Formatters.Binary;
-using System.Security.Policy;
 using System.Text;
 using System.Threading;
-using System.Xml.Linq;
-using Biblioteka;
 
 namespace NeLjutiSeCovece
 {
@@ -20,7 +18,6 @@ namespace NeLjutiSeCovece
         private int maxIgraca;
         private Igra igra;
         private Dictionary<Socket, int> clientToPlayerIndex = new Dictionary<Socket, int>();
-        // Lista dostupnih boja (prema broju igrača)
         private List<string> dostupneBoje = new List<string>();
 
         public Server(Igra igra, int maxIgraca)
@@ -61,7 +58,6 @@ namespace NeLjutiSeCovece
                         int playerIndex = klijenti.Count - 1;
                         clientToPlayerIndex[clientSocket] = playerIndex;
 
-                        // Automatski dodeli prvu dostupnu boju
                         if (dostupneBoje.Count > 0)
                         {
                             string assignedColor = dostupneBoje[0];
@@ -72,7 +68,7 @@ namespace NeLjutiSeCovece
                         }
                         else
                         {
-                            // Ovo ne bi trebalo da se desi ako su brojevi usklađeni
+                   
                             PosaljiPoruku(clientSocket, "TEXT:Nema dostupnih boja!");
                         }
 
@@ -133,8 +129,7 @@ namespace NeLjutiSeCovece
 
         private void ObradiPoruku(Socket klijent, string poruka)
         {
-            // Ovdje se obrađuju poruke koje nisu vezane za boju –
-            // jer je dodela boje obavljena automatski prilikom povezivanja.
+           
             if (igra.Zavrsena)
             {
                 PosaljiPoruku(klijent, "TEXT:Igra je završena, čekajte novu partiju.");
@@ -358,7 +353,7 @@ namespace NeLjutiSeCovece
                 igra.Igraci.Add(new Korisnik
                 {
                     Id = i,
-                    Ime = "", // Ime će biti dodeljeno automatski (boja)
+                    Ime = "", 
                     StratPozicija = startPoz,
                     CiljPozicija = ciljPoz,
                     Figure = new List<Figura>

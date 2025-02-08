@@ -1,21 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Net;
-using System.Net.Sockets;
-using System.Runtime.Serialization.Formatters.Binary;
-using System.Text;
-using System.Threading;
-
+﻿using Biblioteka; 
 using System;
 using System.Collections.Generic;
-using System.Text;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
-using System.Threading;
-using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
-using Biblioteka; // Obavezno referencirajte projekat sa klasama poput Korisnik, Figura itd.
+using System.Text;
+using System.Threading;
 
 namespace KlijentProjekat
 {
@@ -24,13 +15,13 @@ namespace KlijentProjekat
         private const int Port = 5000;
         private string ServerIp;
         private Socket klijentSocket;
-        // Varijabla 'ime' će sadržavati dodeljenu boju
+       
         private string ime = "";
 
         public Klijent(string serverIp, string ime = "", int port = Port)
         {
             ServerIp = serverIp;
-            this.ime = ime; // Inicijalno prazan; postavit će se nakon dodele boje od strane servera
+            this.ime = ime; 
         }
 
         public void Pokreni()
@@ -66,12 +57,7 @@ namespace KlijentProjekat
             }
         }
 
-        /// <summary>
-        /// Metoda obrađuje primljene podatke na osnovu headera:
-        /// "REPORT:" – serijalizovan izveštaj (List<Korisnik>),
-        /// "TEXT:"   – obična tekstualna poruka.
-        /// </summary>
-        /// <param name="updateData">Primljeni bajt niz</param>
+      
         private void ProcessReceivedData(byte[] updateData)
         {
             string headerReport = "REPORT:";
@@ -79,7 +65,7 @@ namespace KlijentProjekat
 
             string dataString = Encoding.UTF8.GetString(updateData);
 
-            // Obrada serijalizovanog izveštaja
+           
             if (dataString.StartsWith(headerReport))
             {
                 byte[] reportData = new byte[updateData.Length - headerReport.Length];
@@ -109,14 +95,13 @@ namespace KlijentProjekat
                     Console.WriteLine("Greška pri deserijalizaciji izveštaja: " + ex.Message);
                 }
             }
-            // Obrada običnih tekstualnih poruka
+           
             else if (dataString.StartsWith(headerText))
             {
                 string poruka = dataString.Substring(headerText.Length);
                 Console.WriteLine("\n--- Ažuriranje igre ---");
                 Console.WriteLine(poruka);
 
-                // Ako poruka sadrži potvrdu dodele boje, postavi varijablu 'ime'
                 if (poruka.StartsWith("Boja uspseno odabrana:"))
                 {
                     string odabranaBoja = poruka.Substring("Boja uspseno odabrana:".Length).Trim();
@@ -125,7 +110,6 @@ namespace KlijentProjekat
                     return;
                 }
 
-                // Ako poruka sadrži informaciju o potezu i naše ime (boju) je uključeno, pokreni unos poteza
                 if (poruka.Contains("Trenutni igrač:") && poruka.Contains(ime))
                 {
                     Console.WriteLine("\n*** Vaš je potez! ***");
@@ -134,7 +118,7 @@ namespace KlijentProjekat
             }
             else
             {
-                // Ako header nije prepoznat, tretiramo poruku kao običan tekst
+                
                 Console.WriteLine("\n--- Ažuriranje igre ---");
                 Console.WriteLine(dataString);
                 if (dataString.Contains("Trenutni igrač:") && dataString.Contains(ime))
@@ -272,7 +256,7 @@ namespace KlijentProjekat
             Console.WriteLine("Unesite IP adresu servera:");
             string serverIp = Console.ReadLine();
 
-            // Ne tražimo unos imena (boja će biti automatski dodeljena)
+            
             Klijent klijent = new Klijent(serverIp);
             klijent.Pokreni();
         }
