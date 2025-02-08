@@ -14,14 +14,14 @@ namespace Biblioteka
         public string Ime { get; set; }
         public List<Figura> Figure { get; set; } = new List<Figura>();
 
-        public int StratPozicija { get; set; }
+        public int StartPozicija { get; set; }
         public int CiljPozicija { get; set; }
 
         public Korisnik(int id, string ime, int stratPozicija, int ciljPozicija)
         {
             Id = id;
             Ime = ime;
-            StratPozicija = stratPozicija;
+            StartPozicija = stratPozicija;
             CiljPozicija = ciljPozicija;
             Figure = new List<Figura>();
             for (int i = 0; i < 4; i++)

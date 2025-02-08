@@ -17,21 +17,21 @@ namespace NeLjutiSeCovece
         private List<Socket> klijenti = new List<Socket>();
         private int maxIgraca;
         private Igra igra;
-        private Dictionary<Socket, int> clientToPlayerIndex = new Dictionary<Socket, int>();
+        private Dictionary<Socket, int> klijentIgracIndeks = new Dictionary<Socket, int>();
         private List<string> dostupneBoje = new List<string>();
 
-        public Server(Igra igra, int maxIgraca)
+        public Server(Igra igra, int brIgraca)
         {
-            if (maxIgraca < 2 || maxIgraca > 4)
+            if (brIgraca < 2 || brIgraca > 4)
                 throw new ArgumentException("Broj igrača mora biti 2, 3 ili 4.");
 
             this.igra = igra;
-            this.igra.BrojIgraca = maxIgraca;
-            this.maxIgraca = maxIgraca;
+            this.igra.BrojIgraca = brIgraca;
+            this.maxIgraca = brIgraca;
 
-            if (maxIgraca == 4)
+            if (brIgraca == 4)
                 dostupneBoje.AddRange(new[] { "crvena", "plava", "zuta", "zelena" });
-            else if (maxIgraca == 3)
+            else if (brIgraca == 3)
                 dostupneBoje.AddRange(new[] { "crvena", "plava", "zelena" });
             else
                 dostupneBoje.AddRange(new[] { "crvena", "zelena" });
@@ -55,20 +55,20 @@ namespace NeLjutiSeCovece
                         clientSocket.Blocking = false;
                         klijenti.Add(clientSocket);
 
-                        int playerIndex = klijenti.Count - 1;
-                        clientToPlayerIndex[clientSocket] = playerIndex;
+                        int igracIndeks = klijenti.Count - 1;
+                        klijentIgracIndeks[clientSocket] = igracIndeks;
 
                         if (dostupneBoje.Count > 0)
                         {
-                            string assignedColor = dostupneBoje[0];
+                            string dodeljenaBoja = dostupneBoje[0];
                             dostupneBoje.RemoveAt(0);
-                            igra.Igraci[playerIndex].Ime = assignedColor;
-                            PosaljiPoruku(clientSocket, "TEXT:Boja uspseno odabrana: " + assignedColor);
-                            Console.WriteLine($"Klijent {clientSocket.RemoteEndPoint} je dodeljen boji: {assignedColor}");
+                            igra.Igraci[igracIndeks].Ime = dodeljenaBoja;
+                            PosaljiPoruku(clientSocket, "TEXT:Boja uspseno odabrana: " + dodeljenaBoja);
+                            Console.WriteLine($"Klijent {clientSocket.RemoteEndPoint} je dodeljen boji: {dodeljenaBoja}");
                         }
                         else
                         {
-                   
+
                             PosaljiPoruku(clientSocket, "TEXT:Nema dostupnih boja!");
                         }
 
@@ -85,8 +85,8 @@ namespace NeLjutiSeCovece
                 }
             }
 
-            string initialMsg = $"Igra počinje! Trenutni igrač: {igra.TrenutniIgrac().Ime}";
-            ObavestiSve(initialMsg);
+            string pocetnaPoruka = $"Igra počinje! Trenutni igrač: {igra.TrenutniIgrac().Ime}";
+            ObavestiSve(pocetnaPoruka);
             Console.WriteLine("Poslat je početni update svim klijentima.");
 
             PokreniIgru();
@@ -129,7 +129,7 @@ namespace NeLjutiSeCovece
 
         private void ObradiPoruku(Socket klijent, string poruka)
         {
-           
+
             if (igra.Zavrsena)
             {
                 PosaljiPoruku(klijent, "TEXT:Igra je završena, čekajte novu partiju.");
@@ -171,15 +171,15 @@ namespace NeLjutiSeCovece
                 {
                     BinaryFormatter bf = new BinaryFormatter();
                     bf.Serialize(ms, igra.Igraci);
-                    byte[] serializedData = ms.ToArray();
-                    ObavestiSveSerialized(serializedData);
+                    byte[] serijalizovaniPodaci = ms.ToArray();
+                    ObavestiSveSerijalizovano(serijalizovaniPodaci);
                 }
 
                 Thread.Sleep(1500);
                 if (!igra.Zavrsena)
                 {
-                    string turnInfo = $"Trenutni igrač: {igra.TrenutniIgrac().Ime}";
-                    ObavestiSve(turnInfo);
+                    string naRedu = $"Trenutni igrač: {igra.TrenutniIgrac().Ime}";
+                    ObavestiSve(naRedu);
                 }
             }
             catch (Exception ex)
@@ -205,18 +205,18 @@ namespace NeLjutiSeCovece
             }
         }
 
-        private void ObavestiSveSerialized(byte[] serijalizovaniPodaci)
+        private void ObavestiSveSerijalizovano(byte[] serijalizovaniPodaci)
         {
-            byte[] header = Encoding.UTF8.GetBytes("REPORT:");
-            byte[] combined = new byte[header.Length + serijalizovaniPodaci.Length];
-            Buffer.BlockCopy(header, 0, combined, 0, header.Length);
-            Buffer.BlockCopy(serijalizovaniPodaci, 0, combined, header.Length, serijalizovaniPodaci.Length);
+            byte[] header = Encoding.UTF8.GetBytes("IZVESTAJ:");
+            byte[] porukaSaHeaderom = new byte[header.Length + serijalizovaniPodaci.Length];
+            Buffer.BlockCopy(header, 0, porukaSaHeaderom, 0, header.Length);
+            Buffer.BlockCopy(serijalizovaniPodaci, 0, porukaSaHeaderom, header.Length, serijalizovaniPodaci.Length);
 
             foreach (var klijent in klijenti)
             {
                 try
                 {
-                    klijent.Send(combined);
+                    klijent.Send(porukaSaHeaderom);
                 }
                 catch (SocketException ex)
                 {
@@ -244,13 +244,13 @@ namespace NeLjutiSeCovece
 
             ObavestiSve("Igra je završena!\n");
             ObavestiSve("Ukoliko želite da odigrate još jednu partiju unesite 'DA'.");
-            Console.WriteLine("Čekam prijave za novu igru (30 sekundi)...");
+            Console.WriteLine("Čekam prijave za novu igru (15 sekundi)...");
 
-            List<Socket> rejoinClients = new List<Socket>();
-            DateTime start = DateTime.Now;
-            TimeSpan waitTime = TimeSpan.FromSeconds(30);
+            List<Socket> ponovoPovezaniKlijenti = new List<Socket>();
+            DateTime pocetak = DateTime.Now;
+            TimeSpan cekanje = TimeSpan.FromSeconds(15);
 
-            while (DateTime.Now - start < waitTime)
+            while (DateTime.Now - pocetak < cekanje)
             {
                 foreach (var klijent in klijenti.ToArray())
                 {
@@ -265,9 +265,9 @@ namespace NeLjutiSeCovece
                                 string odgovor = Encoding.UTF8.GetString(buffer, 0, primljeno).Trim();
                                 if (odgovor.Equals("DA", StringComparison.OrdinalIgnoreCase))
                                 {
-                                    if (!rejoinClients.Contains(klijent))
+                                    if (!ponovoPovezaniKlijenti.Contains(klijent))
                                     {
-                                        rejoinClients.Add(klijent);
+                                        ponovoPovezaniKlijenti.Add(klijent);
                                         Console.WriteLine($"Klijent {klijent.RemoteEndPoint} se ponovo prijavio.");
                                     }
                                 }
@@ -286,16 +286,16 @@ namespace NeLjutiSeCovece
                 Thread.Sleep(100);
             }
 
-            while (rejoinClients.Count < prethodniBrojIgraca)
+            while (ponovoPovezaniKlijenti.Count < prethodniBrojIgraca)
             {
-                Console.WriteLine($"Trenutno ima {rejoinClients.Count} prijavljenih, čekam nove klijente...");
+                Console.WriteLine($"Trenutno ima {ponovoPovezaniKlijenti.Count} prijavljenih, čekam nove klijente...");
                 if (serverSocket.Poll(1000000, SelectMode.SelectRead))
                 {
                     try
                     {
                         Socket noviKlijent = serverSocket.Accept();
                         noviKlijent.Blocking = false;
-                        rejoinClients.Add(noviKlijent);
+                        ponovoPovezaniKlijenti.Add(noviKlijent);
                         Console.WriteLine($"Novi klijent se povezao: {noviKlijent.RemoteEndPoint}");
                     }
                     catch (SocketException ex)
@@ -306,19 +306,19 @@ namespace NeLjutiSeCovece
                 Thread.Sleep(100);
             }
 
-            if (rejoinClients.Count == 0)
+            if (ponovoPovezaniKlijenti.Count == 0)
             {
                 Console.WriteLine("Svi klijenti su se diskonektovali. Server završava sa radom.");
                 Environment.Exit(0);
             }
 
-            klijenti = rejoinClients;
+            klijenti = ponovoPovezaniKlijenti;
             Console.WriteLine("Svi igrači su se prijavili za novu igru. Igra se resetuje.");
 
             igra.Resetuj();
             Thread.Sleep(500);
-            string initialMsg = $"Igra počinje! Trenutni igrač: {igra.TrenutniIgrac().Ime}";
-            ObavestiSve(initialMsg);
+            string pocetnaPoruka = $"Igra počinje! Trenutni igrač: {igra.TrenutniIgrac().Ime}";
+            ObavestiSve(pocetnaPoruka);
             PokreniIgru();
         }
 
@@ -332,32 +332,32 @@ namespace NeLjutiSeCovece
             }
 
             Console.WriteLine("Unesite broj ćelija na obimu table (mora biti veći od 16 i deljiv sa 4):");
-            int boardSize;
-            while (!int.TryParse(Console.ReadLine(), out boardSize) || boardSize <= 16 || boardSize % 4 != 0)
+            int velicinaTabele;
+            while (!int.TryParse(Console.ReadLine(), out velicinaTabele) || velicinaTabele <= 16 || velicinaTabele % 4 != 0)
             {
                 Console.WriteLine("Neispravan unos! Broj ćelija mora biti veći od 16 i deljiv sa 4. Pokušajte ponovo:");
             }
 
-            int segment = boardSize / 4;
+            int segment = velicinaTabele / 4;
             Igra igra = new Igra();
 
-            int[] quadrantIndices;
+            int[] kvadrant;
             if (brojIgraca == 4)
-                quadrantIndices = new int[] { 0, 1, 2, 3 };
+                kvadrant = new int[] { 0, 1, 2, 3 };
             else if (brojIgraca == 3)
-                quadrantIndices = new int[] { 0, 1, 3 };
+                kvadrant = new int[] { 0, 1, 3 };
             else
-                quadrantIndices = new int[] { 0, 2 };
+                kvadrant = new int[] { 0, 2 };
 
             for (int i = 0; i < brojIgraca; i++)
             {
-                int startPoz = quadrantIndices[i] * segment;
-                int ciljPoz = startPoz + boardSize + 4;
+                int startPoz = kvadrant[i] * segment;
+                int ciljPoz = startPoz + velicinaTabele + 4;
                 igra.Igraci.Add(new Korisnik
                 {
                     Id = i,
-                    Ime = "", 
-                    StratPozicija = startPoz,
+                    Ime = "",
+                    StartPozicija = startPoz,
                     CiljPozicija = ciljPoz,
                     Figure = new List<Figura>
                     {
@@ -372,7 +372,7 @@ namespace NeLjutiSeCovece
             Console.WriteLine("\nInicijalizovani igrači sa početnim pozicijama i krajnjim ciljevima:");
             foreach (var igrac in igra.Igraci)
             {
-                Console.WriteLine($"Igrač: {igrac.Ime} | Početak: {igrac.StratPozicija} | Cilj: {igrac.CiljPozicija}");
+                Console.WriteLine($"Igrač: {igrac.Ime} | Početak: {igrac.StartPozicija} | Cilj: {igrac.CiljPozicija}");
             }
             Console.WriteLine();
 

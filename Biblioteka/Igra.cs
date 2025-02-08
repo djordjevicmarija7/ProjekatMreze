@@ -1,7 +1,6 @@
 ﻿
 using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace Biblioteka
 {
@@ -40,19 +39,19 @@ namespace Biblioteka
 
         public bool IgraJeZavrsena(Korisnik igrac)
         {
-            int countFinished = 0;
+            int brojFiguraUKucici = 0;
             int kucicaPocetak = igrac.CiljPozicija - 3;
             foreach (var figura in igrac.Figure)
             {
                 if (figura.Aktivna && figura.Pozicija >= kucicaPocetak)
-                    countFinished++;
+                    brojFiguraUKucici++;
             }
-            return countFinished == igrac.Figure.Count;
+            return brojFiguraUKucici == igrac.Figure.Count;
         }
 
         public bool DaLiJePotezValidan(Figura figura, int rezultatKocke, int ciljPozicija, Korisnik trenutniIgrac)
         {
-            int homeStart = ciljPozicija - 3;
+            int pocetakKucice = ciljPozicija - 3;
             int ciljPoz = trenutniIgrac.CiljPozicija;
             int novaPozicija = figura.Pozicija + rezultatKocke;
 
@@ -61,9 +60,9 @@ namespace Biblioteka
                 return true;
             }
 
-            if (figura.Pozicija < homeStart)
+            if (figura.Pozicija < pocetakKucice)
             {
-                if (novaPozicija < homeStart)
+                if (novaPozicija < pocetakKucice)
                 {
                     return true;
                 }
@@ -74,7 +73,7 @@ namespace Biblioteka
 
                     foreach (var drugaFigura in trenutniIgrac.Figure)
                     {
-                        if (drugaFigura.Id != figura.Id && drugaFigura.Aktivna && drugaFigura.Pozicija == novaPozicija && novaPozicija >= homeStart)
+                        if (drugaFigura.Id != figura.Id && drugaFigura.Aktivna && drugaFigura.Pozicija == novaPozicija && novaPozicija >= pocetakKucice)
                         {
                             return false;
                         }
@@ -91,7 +90,7 @@ namespace Biblioteka
 
                 foreach (var drugaFigura in trenutniIgrac.Figure)
                 {
-                    if (drugaFigura.Id != figura.Id && drugaFigura.Aktivna && drugaFigura.Pozicija == novaPozicija && novaPozicija >= homeStart)
+                    if (drugaFigura.Id != figura.Id && drugaFigura.Aktivna && drugaFigura.Pozicija == novaPozicija && novaPozicija >= pocetakKucice)
                     {
                         return false;
                     }
@@ -106,7 +105,7 @@ namespace Biblioteka
             if (!figura.Aktivna && rezultatKocke == 6)
             {
                 figura.Aktivna = true;
-                figura.Pozicija = trenutniIgrac.StratPozicija;
+                figura.Pozicija = trenutniIgrac.StartPozicija;
                 figura.UdaljenostDoCilja = figura.Pozicija;
             }
             else if (figura.Aktivna)
@@ -123,9 +122,9 @@ namespace Biblioteka
 
         public bool ProveriPreklapanje(Figura figura, List<Korisnik> igraci, Korisnik trenutniIgrac)
         {
-            int homeStart = trenutniIgrac.CiljPozicija - 3;
+            int pocetakKucice = trenutniIgrac.CiljPozicija - 3;
 
-            if (figura.Pozicija >= homeStart)
+            if (figura.Pozicija >= pocetakKucice)
                 return false;
 
 
@@ -167,7 +166,7 @@ namespace Biblioteka
                 if (potez.BrojPolja != 6)
                     return "Figura se moze aktivirati samo bacanjem broja 6.";
 
-                figura.Pozicija = trenutniIgrac.StratPozicija;
+                figura.Pozicija = trenutniIgrac.StartPozicija;
                 figura.Aktivna = true;
                 if (IgraJeZavrsena(trenutniIgrac))
                 {
@@ -241,10 +240,6 @@ namespace Biblioteka
             foreach (var igrac in Igraci)
             {
 
-                igrac.StratPozicija = igrac.Id * 10;
-                igrac.CiljPozicija = igrac.StratPozicija + 39;
-
-
                 igrac.Figure = new List<Figura>
                 {
                     new Figura{Id=0,Aktivna=false,Pozicija=-1},
@@ -256,36 +251,6 @@ namespace Biblioteka
             Zavrsena = false;
             Console.WriteLine("Igra je resetovana i spremna za novu sesiju.");
         }
-        public string GenerisiIzvestaj()
-        {
-            StringBuilder izvestaj = new StringBuilder();
 
-            izvestaj.AppendLine("Izvestaj o igri: ");
-            foreach (var igrac in Igraci)
-            {
-                izvestaj.AppendLine($"Igrac: {igrac.Ime}");
-                izvestaj.AppendLine($"Pocetna pozicija: {igrac.StratPozicija}, ");
-
-                foreach (var figura in igrac.Figure)
-                {
-                    string status = figura.Aktivna ? "Aktivna" : "Nije aktivna";
-                    izvestaj.AppendLine($"Figura {figura.Id}: {status} | Pozicija: {figura.Pozicija}, Udaljenost do cilja: {figura.UdaljenostDoCilja}");
-
-                }
-                izvestaj.AppendLine();
-            }
-            Korisnik trenutniIgrac = TrenutniIgrac();
-            izvestaj.AppendLine($"Trenutni igrač: {trenutniIgrac.Ime}");
-
-            if (Zavrsena)
-            {
-                izvestaj.AppendLine("Igra je zavrsena!");
-            }
-            else
-            {
-                izvestaj.AppendLine("Igra nije zavrsena.");
-            }
-            return izvestaj.ToString();
-        }
     }
 }

@@ -1,4 +1,4 @@
-﻿using Biblioteka; 
+﻿using Biblioteka;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,13 +15,13 @@ namespace KlijentProjekat
         private const int Port = 5000;
         private string ServerIp;
         private Socket klijentSocket;
-       
+
         private string ime = "";
 
         public Klijent(string serverIp, string ime = "", int port = Port)
         {
             ServerIp = serverIp;
-            this.ime = ime; 
+            this.ime = ime;
         }
 
         public void Pokreni()
@@ -38,10 +38,10 @@ namespace KlijentProjekat
 
                 while (true)
                 {
-                    byte[] updateData = PrimiPodatke();
-                    if (updateData != null && updateData.Length > 0)
+                    byte[] podaci = PrimiPodatke();
+                    if (podaci != null && podaci.Length > 0)
                     {
-                        ProcessReceivedData(updateData);
+                        ObradiPrimljenePodatke(podaci);
                     }
                     Thread.Sleep(1000);
                 }
@@ -57,22 +57,22 @@ namespace KlijentProjekat
             }
         }
 
-      
-        private void ProcessReceivedData(byte[] updateData)
+
+        private void ObradiPrimljenePodatke(byte[] podaci)
         {
-            string headerReport = "REPORT:";
+            string headerIzvestaj = "IZVESTAJ:";
             string headerText = "TEXT:";
 
-            string dataString = Encoding.UTF8.GetString(updateData);
+            string dataString = Encoding.UTF8.GetString(podaci);
 
-           
-            if (dataString.StartsWith(headerReport))
+
+            if (dataString.StartsWith(headerIzvestaj))
             {
-                byte[] reportData = new byte[updateData.Length - headerReport.Length];
-                Array.Copy(updateData, headerReport.Length, reportData, 0, reportData.Length);
+                byte[] izvestajPodaci = new byte[podaci.Length - headerIzvestaj.Length];
+                Array.Copy(podaci, headerIzvestaj.Length, izvestajPodaci, 0, izvestajPodaci.Length);
                 try
                 {
-                    using (MemoryStream ms = new MemoryStream(reportData))
+                    using (MemoryStream ms = new MemoryStream(izvestajPodaci))
                     {
                         BinaryFormatter bf = new BinaryFormatter();
                         var listaIgraca = (List<Korisnik>)bf.Deserialize(ms);
@@ -80,11 +80,23 @@ namespace KlijentProjekat
                         foreach (var igrac in listaIgraca)
                         {
                             Console.WriteLine($"Igrač: {igrac.Ime}");
-                            Console.WriteLine($"Početna pozicija: {igrac.StratPozicija}, Ciljna pozicija: {igrac.CiljPozicija}");
+                            Console.WriteLine($"Pocetna pozicija: {igrac.StartPozicija}, ciljna pozicija: {igrac.CiljPozicija}");
                             foreach (var figura in igrac.Figure)
                             {
-                                string status = figura.Aktivna ? "Aktivna" : "Neaktivna";
-                                Console.WriteLine($"  Figura {figura.Id}: {status}, Pozicija: {figura.Pozicija}, Udaljenost do cilja: {figura.UdaljenostDoCilja}");
+                                string status = figura.Aktivna ? "Aktivna" : "Nije aktivna";
+                                if (figura.Pozicija == -1)
+                                {
+                                    Console.WriteLine($"Figura {figura.Id}: {status} | Pozicija: {figura.Pozicija} | Nije na tabli");
+                                }
+                                else if (figura.Pozicija < igrac.CiljPozicija - 3)
+                                {
+                                    int udaljenostDoKucice = igrac.CiljPozicija - 3 - figura.Pozicija;
+                                    Console.WriteLine($"Figura {figura.Id}: {status} | Pozicija: {figura.Pozicija} | Udaljenost do kucice: {udaljenostDoKucice}");
+                                }
+                                else
+                                {
+                                    Console.WriteLine($"Figura {figura.Id}: {status} | Pozicija: {figura.Pozicija} | Udaljenost do kucice: 0 | Figura je u kucici");
+                                }
                             }
                             Console.WriteLine();
                         }
@@ -95,7 +107,7 @@ namespace KlijentProjekat
                     Console.WriteLine("Greška pri deserijalizaciji izveštaja: " + ex.Message);
                 }
             }
-           
+
             else if (dataString.StartsWith(headerText))
             {
                 string poruka = dataString.Substring(headerText.Length);
@@ -110,7 +122,7 @@ namespace KlijentProjekat
                     return;
                 }
 
-                if(poruka.Contains("Ukoliko želite da odigrate još jednu partiju unesite 'DA'"))
+                if (poruka.Contains("Ukoliko želite da odigrate još jednu partiju unesite 'DA'"))
                 {
                     Console.WriteLine("Unesite DA za ponovnu prijavu: ");
                     string odgovor = Console.ReadLine();
@@ -121,32 +133,32 @@ namespace KlijentProjekat
                 if (poruka.Contains("Trenutni igrač:") && poruka.Contains(ime))
                 {
                     Console.WriteLine("\n*** Vaš je potez! ***");
-                    ProcessirajPotez();
+                    ProcesuirajPotez();
                 }
             }
             else
             {
-                
+
                 Console.WriteLine("\n--- Ažuriranje igre ---");
                 Console.WriteLine(dataString);
                 if (dataString.Contains("Trenutni igrač:") && dataString.Contains(ime))
                 {
                     Console.WriteLine("\n*** Vaš je potez! ***");
-                    ProcessirajPotez();
+                    ProcesuirajPotez();
                 }
             }
         }
 
-        private void ProcessirajPotez()
+        private void ProcesuirajPotez()
         {
-            bool turnOngoing = true;
-            while (turnOngoing)
+            bool naRedu = true;
+            while (naRedu)
             {
-                Console.WriteLine("Unesite rezultat bacanja kockice:");
-                string diceInput = Console.ReadLine();
-                if (!int.TryParse(diceInput, out int diceResult))
+                Console.WriteLine("Unesite rezultat bacanja kockice(1-6):");
+                string unosKockice = Console.ReadLine();
+                if (!int.TryParse(unosKockice, out int rezultatKockice) || rezultatKockice<1 || rezultatKockice>6)
                 {
-                    Console.WriteLine("Neispravan rezultat kockice. Pokušajte ponovo.");
+                    Console.WriteLine("Neispravan rezultat kockice. Rezulatat mora biti broj izmedju 1 i 6.Pokušajte ponovo.");
                     continue;
                 }
 
@@ -159,21 +171,21 @@ namespace KlijentProjekat
                 }
 
                 Console.WriteLine("Unesite ID figure:");
-                string idInput = Console.ReadLine();
-                if (!int.TryParse(idInput, out int idFigure))
+                string unosId = Console.ReadLine();
+                if (!int.TryParse(unosId, out int idFigure))
                 {
                     Console.WriteLine("Neispravan unos ID figure.");
                     continue;
                 }
 
-                string poruka = $"{akcija}\n{idFigure}\n{diceResult}";
+                string poruka = $"{akcija}\n{idFigure}\n{rezultatKockice}";
                 PosaljiPoruku(poruka);
                 string odgovor = PrimiPoruku();
                 Console.WriteLine("Odgovor servera: " + odgovor);
 
                 if (!odgovor.ToLower().Contains("dodatni potez"))
                 {
-                    turnOngoing = false;
+                    naRedu = false;
                 }
                 else
                 {
@@ -264,7 +276,7 @@ namespace KlijentProjekat
             Console.WriteLine("Unesite IP adresu servera:");
             string serverIp = Console.ReadLine();
 
-            
+
             Klijent klijent = new Klijent(serverIp);
             klijent.Pokreni();
         }
