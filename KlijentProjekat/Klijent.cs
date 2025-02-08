@@ -1,8 +1,21 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Threading;
+
+using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Net;
+using System.Net.Sockets;
+using System.Threading;
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
+using Biblioteka; // Obavezno referencirajte projekat sa klasama poput Korisnik, Figura itd.
 
 namespace KlijentProjekat
 {
@@ -11,7 +24,7 @@ namespace KlijentProjekat
         private const int Port = 5000;
         private string ServerIp;
         private Socket klijentSocket;
-        private string ime; 
+        private string ime;
 
         public Klijent(string serverIp, string ime, int port = Port)
         {
@@ -27,27 +40,17 @@ namespace KlijentProjekat
             try
             {
                 klijentSocket.Connect(serverEP);
-                Console.WriteLine("Povezan sa serverom. Čekate azuriranje igre...");
-             
+                Console.WriteLine("Povezan sa serverom. Čekate ažuriranje igre...");
+
                 klijentSocket.Blocking = false;
 
-           
                 while (true)
                 {
-                    string update = PrimiPoruku();
-                    if (!string.IsNullOrEmpty(update))
+                    byte[] updateData = PrimiPodatke();
+                    if (updateData != null && updateData.Length > 0)
                     {
-                        Console.WriteLine("\n--- Azuriranje igre ---");
-                        Console.WriteLine(update);
-
-                     
-                        if (update.Contains($"Trenutni igrač: {ime}"))
-                        {
-                            Console.WriteLine("\n*** Vaš je potez! ***");
-                            ProcessirajPotez();
-                        }
+                        ProcessReceivedData(updateData);
                     }
-                   
                     Thread.Sleep(1000);
                 }
             }
@@ -62,7 +65,80 @@ namespace KlijentProjekat
             }
         }
 
-       
+        /// <summary>
+        /// Metoda obrađuje primljene podatke na osnovu headera:
+        /// "REPORT:" – serijalizovan izveštaj (List<Korisnik>),
+        /// "TEXT:"   – obična tekstualna poruka.
+        /// </summary>
+        /// <param name="updateData">Primljeni bajt niz</param>
+        private void ProcessReceivedData(byte[] updateData)
+        {
+            string headerReport = "REPORT:";
+            string headerText = "TEXT:";
+
+            // Provjera da li podaci započinju s headerom "REPORT:"
+            if (updateData.Length >= headerReport.Length &&
+                Encoding.UTF8.GetString(updateData, 0, headerReport.Length) == headerReport)
+            {
+                // Obrada serijalizovanog izveštaja
+                byte[] reportData = new byte[updateData.Length - headerReport.Length];
+                Array.Copy(updateData, headerReport.Length, reportData, 0, reportData.Length);
+                try
+                {
+                    using (MemoryStream ms = new MemoryStream(reportData))
+                    {
+                        BinaryFormatter bf = new BinaryFormatter();
+                        var listaIgraca = (List<Korisnik>)bf.Deserialize(ms);
+                        Console.WriteLine("\n--- Ažuriranje igre (Izveštaj) ---");
+                        foreach (var igrac in listaIgraca)
+                        {
+                            Console.WriteLine($"Igrač: {igrac.Ime}");
+                            Console.WriteLine($"Početna pozicija: {igrac.StratPozicija}, Ciljna pozicija: {igrac.CiljPozicija}");
+                            foreach (var figura in igrac.Figure)
+                            {
+                                string status = figura.Aktivna ? "Aktivna" : "Neaktivna";
+                                Console.WriteLine($"  Figura {figura.Id}: {status}, Pozicija: {figura.Pozicija}, Udaljenost do cilja: {figura.UdaljenostDoCilja}");
+                            }
+                            Console.WriteLine();
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Greška pri deserijalizaciji izveštaja: " + ex.Message);
+                }
+            }
+            // Ako je poruka običan tekst (header "TEXT:")
+            else if (updateData.Length >= headerText.Length &&
+                     Encoding.UTF8.GetString(updateData, 0, headerText.Length) == headerText)
+            {
+                string poruka = Encoding.UTF8.GetString(updateData);
+                // Uklanjamo header ("TEXT:") – koji je dugačak 5 karaktera
+                poruka = poruka.Substring(headerText.Length);
+                Console.WriteLine("\n--- Ažuriranje igre ---");
+                Console.WriteLine(poruka);
+
+                // Ako primljena poruka sadrži informaciju o tome ko je na potezu, pozivamo unos poteza
+                if (poruka.Contains($"Trenutni igrač: {ime}"))
+                {
+                    Console.WriteLine("\n*** Vaš je potez! ***");
+                    ProcessirajPotez();
+                }
+            }
+            else
+            {
+                // Ako header nije prepoznat, tretiramo poruku kao plain text
+                string poruka = Encoding.UTF8.GetString(updateData);
+                Console.WriteLine("\n--- Ažuriranje igre ---");
+                Console.WriteLine(poruka);
+                if (poruka.Contains($"Trenutni igrač: {ime}"))
+                {
+                    Console.WriteLine("\n*** Vaš je potez! ***");
+                    ProcessirajPotez();
+                }
+            }
+        }
+
         private void ProcessirajPotez()
         {
             bool turnOngoing = true;
@@ -92,13 +168,11 @@ namespace KlijentProjekat
                     continue;
                 }
 
-                
                 string poruka = $"{akcija}\n{idFigure}\n{diceResult}";
                 PosaljiPoruku(poruka);
                 string odgovor = PrimiPoruku();
                 Console.WriteLine("Odgovor servera: " + odgovor);
 
-              
                 if (!odgovor.ToLower().Contains("dodatni potez"))
                 {
                     turnOngoing = false;
@@ -106,11 +180,10 @@ namespace KlijentProjekat
                 else
                 {
                     Console.WriteLine("Imate dodatni potez. Unesite rezultat bacanja kockice za dodatni potez.");
-                    Thread.Sleep(500); 
+                    Thread.Sleep(500);
                 }
             }
         }
-
 
         private void PosaljiPoruku(string poruka)
         {
@@ -123,6 +196,32 @@ namespace KlijentProjekat
             {
                 Console.WriteLine($"Greška pri slanju poruke: {ex.Message}");
             }
+        }
+
+        private byte[] PrimiPodatke()
+        {
+            byte[] buffer = new byte[4096];
+            try
+            {
+                if (klijentSocket.Poll(1500000, SelectMode.SelectRead))
+                {
+                    int primljeno = klijentSocket.Receive(buffer);
+                    if (primljeno > 0)
+                    {
+                        byte[] data = new byte[primljeno];
+                        Array.Copy(buffer, data, primljeno);
+                        return data;
+                    }
+                }
+            }
+            catch (SocketException ex)
+            {
+                if (ex.SocketErrorCode != SocketError.WouldBlock)
+                {
+                    Console.WriteLine($"Greška pri prijemu podataka: {ex.Message}");
+                }
+            }
+            return null;
         }
 
         private string PrimiPoruku()
@@ -138,8 +237,7 @@ namespace KlijentProjekat
                         int primljeno = klijentSocket.Receive(buffer);
                         if (primljeno > 0)
                         {
-                            string poruka= Encoding.UTF8.GetString(buffer, 0, primljeno);
-                            
+                            string poruka = Encoding.UTF8.GetString(buffer, 0, primljeno);
                             return poruka;
                         }
                     }

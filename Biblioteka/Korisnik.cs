@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace NeLjutiSeCovece
+namespace Biblioteka
 {
     public class Korisnik
     {

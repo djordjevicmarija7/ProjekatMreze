@@ -1,9 +1,9 @@
-﻿using KlijentProjekat;
+﻿
 using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace NeLjutiSeCovece
+namespace Biblioteka
 {
     public class Igra
     {

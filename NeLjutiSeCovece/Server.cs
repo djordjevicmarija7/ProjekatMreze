@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Security.Policy;
 using System.Text;
 using System.Threading;
+using Biblioteka;
 
 namespace NeLjutiSeCovece
 {
@@ -142,7 +143,8 @@ namespace NeLjutiSeCovece
 
         private void ObavestiSve(string poruka)
         {
-            byte[] podaci = Encoding.UTF8.GetBytes(poruka);
+            string porukaSaHeaderom = "TEXT:" + poruka;
+            byte[] podaci = Encoding.UTF8.GetBytes(porukaSaHeaderom);
             foreach (var klijent in klijenti)
             {
                 try
@@ -152,6 +154,26 @@ namespace NeLjutiSeCovece
                 catch (SocketException ex)
                 {
                     Console.WriteLine($"Greška pri slanju poruke klijentu {klijent.RemoteEndPoint}: {ex.Message}");
+                }
+            }
+        }
+        private void ObavestiSveSerialized(byte[] serijalizovaniPodaci)
+        {
+            // Dodajemo header "REPORT:" pre serijalizovanih bajtova.
+            byte[] header = Encoding.UTF8.GetBytes("REPORT:");
+            byte[] combined = new byte[header.Length + serijalizovaniPodaci.Length];
+            Buffer.BlockCopy(header, 0, combined, 0, header.Length);
+            Buffer.BlockCopy(serijalizovaniPodaci, 0, combined, header.Length, serijalizovaniPodaci.Length);
+
+            foreach (var klijent in klijenti)
+            {
+                try
+                {
+                    klijent.Send(combined);
+                }
+                catch (SocketException ex)
+                {
+                    Console.WriteLine($"Greška pri slanju izveštaja klijentu {klijent.RemoteEndPoint}: {ex.Message}");
                 }
             }
         }
@@ -205,32 +227,11 @@ namespace NeLjutiSeCovece
                 int startPoz = quadrantIndices[i] * segment;
                 int ciljPoz = startPoz +boardSize+4;  
 
-                string ime;
-                if (i == 0)
-                {
-                    ime="crevna";
-                }
-                else if (i == 1)
-                {
-                    ime= "plava";
-                }
-                else if (i == 2)
-                {
-                    ime= "zuta";
-                }
-                if (i == 3)
-                {
-                    ime= "zelena";
-                }
-                else
-                {
-                    ime ="";
-                }
 
                 igra.Igraci.Add(new Korisnik
                 {
                     Id = i,
-                    Ime = ime,
+                    Ime = $"Igrac{i+1}",
                     StratPozicija = startPoz,
                     CiljPozicija = ciljPoz,
                     Figure = new List<Figura>
