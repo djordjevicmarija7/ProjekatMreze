@@ -44,6 +44,7 @@
     <Compile Include="Class1.cs" />
     <Compile Include="Figura.cs" />
     <Compile Include="Igra.cs" />
+    <Compile Include="Izvestaj.cs" />
     <Compile Include="Korisnik.cs" />
     <Compile Include="Potez.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

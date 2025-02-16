@@ -208,7 +208,7 @@ namespace Biblioteka
 
                 bool preklapanje = ProveriPreklapanje(figura, Igraci, trenutniIgrac);
                 string poruka = preklapanje ?
-                    "Figura je presla na poziciju protivničke figure i izbaci je iz igre." :
+                    "Figura je presla na poziciju protivničke figure i izbacila je iz igre." :
                     "Potez uspešno izvršen.";
                 if (IgraJeZavrsena(trenutniIgrac))
                 {

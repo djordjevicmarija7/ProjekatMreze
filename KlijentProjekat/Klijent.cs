@@ -1,6 +1,7 @@
 ﻿using Biblioteka;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -68,45 +69,7 @@ namespace KlijentProjekat
 
             if (dataString.StartsWith(headerIzvestaj))
             {
-                byte[] izvestajPodaci = new byte[podaci.Length - headerIzvestaj.Length];
-                Array.Copy(podaci, headerIzvestaj.Length, izvestajPodaci, 0, izvestajPodaci.Length);
-                try
-                {
-                    Thread.Sleep(1000);
-                    using (MemoryStream ms = new MemoryStream(izvestajPodaci))
-                    {
-                        BinaryFormatter bf = new BinaryFormatter();
-                        var listaIgraca = (List<Korisnik>)bf.Deserialize(ms);
-                        Console.WriteLine("\n--- Ažuriranje igre (Izveštaj) ---");
-                        foreach (var igrac in listaIgraca)
-                        {
-                            Console.WriteLine($"Igrač: {igrac.Ime}");
-                            Console.WriteLine($"Pocetna pozicija: {igrac.StartPozicija}, ciljna pozicija: {igrac.CiljPozicija}");
-                            foreach (var figura in igrac.Figure)
-                            {
-                                string status = figura.Aktivna ? "Aktivna" : "Nije aktivna";
-                                if (figura.Pozicija == -1)
-                                {
-                                    Console.WriteLine($"Figura {figura.Id}: {status} | Pozicija: {figura.Pozicija} | Nije na tabli");
-                                }
-                                else if (figura.Pozicija < igrac.CiljPozicija - 3)
-                                {
-                                    int udaljenostDoKucice = igrac.CiljPozicija - 3 - figura.Pozicija;
-                                    Console.WriteLine($"Figura {figura.Id}: {status} | Pozicija: {figura.Pozicija} | Udaljenost do kucice: {udaljenostDoKucice}");
-                                }
-                                else
-                                {
-                                    Console.WriteLine($"Figura {figura.Id}: {status} | Pozicija: {figura.Pozicija} | Udaljenost do kucice: 0 | Figura je u kucici");
-                                }
-                            }
-                            Console.WriteLine();
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("Greška pri deserijalizaciji izveštaja: " + ex.Message);
-                }
+                Izvestaj.PrikaziIzvestaj(podaci);
             }
 
             else if (dataString.StartsWith(headerText))
@@ -184,13 +147,18 @@ namespace KlijentProjekat
                 string odgovor = PrimiPoruku();
                 Console.WriteLine("Odgovor servera: " + odgovor);
 
-                if (!odgovor.ToLower().Contains("dodatni potez"))
+                if (odgovor.ToLower().Contains("dodatni potez"))
                 {
-                    naRedu = false;
+                    Thread.Sleep(500);
+                    
+                }
+                else if(odgovor.ToLower().Contains("nije aktivna") || odgovor.ToLower().Contains("potez nije validan") || odgovor.ToLower().Contains("neispravan"))
+                {
+                    Console.WriteLine("Potez nije validan. Pokusajte ponovo.");
                 }
                 else
                 {
-                    Thread.Sleep(500);
+                    naRedu = false;
                 }
             }
         }

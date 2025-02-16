@@ -159,8 +159,15 @@ namespace NeLjutiSeCovece
 
             string rezultat = igra.ValidirajPotez(potez);
             PosaljiPoruku(klijent, rezultat);
-            if (potez.BrojPolja != 6)
-                ObavestiSveOStanjuIgre();
+            if(rezultat.ToLower().Contains("dodatni potez"))
+            {
+                return;
+            }
+            if (rezultat.ToLower().Contains("nije aktivna") || rezultat.ToLower().Contains("potez nije validan") || rezultat.ToLower().Contains("neispravan"))
+            {
+                return;
+            }
+            ObavestiSveOStanjuIgre();
         }
 
         private void ObavestiSveOStanjuIgre()
@@ -172,7 +179,10 @@ namespace NeLjutiSeCovece
                     BinaryFormatter bf = new BinaryFormatter();
                     bf.Serialize(ms, igra.Igraci);
                     byte[] serijalizovaniPodaci = ms.ToArray();
+                    byte[] porukaSaHeaderom = KreirajIzvestajPoruku(serijalizovaniPodaci);
+
                     ObavestiSveSerijalizovano(serijalizovaniPodaci);
+                    Izvestaj.PrikaziIzvestaj(porukaSaHeaderom);
                 }
 
                 Thread.Sleep(1500);
@@ -205,13 +215,18 @@ namespace NeLjutiSeCovece
             }
         }
 
-        private void ObavestiSveSerijalizovano(byte[] serijalizovaniPodaci)
+        private byte[] KreirajIzvestajPoruku(byte[] serijalizovaniPodaci)
         {
             byte[] header = Encoding.UTF8.GetBytes("IZVESTAJ:");
             byte[] porukaSaHeaderom = new byte[header.Length + serijalizovaniPodaci.Length];
             Buffer.BlockCopy(header, 0, porukaSaHeaderom, 0, header.Length);
             Buffer.BlockCopy(serijalizovaniPodaci, 0, porukaSaHeaderom, header.Length, serijalizovaniPodaci.Length);
 
+            return porukaSaHeaderom;
+        }
+        private void ObavestiSveSerijalizovano(byte[] serijalizovaniPodaci)
+        {
+            byte[] porukaSaHeaderom=KreirajIzvestajPoruku(serijalizovaniPodaci);
             foreach (var klijent in klijenti)
             {
                 try
