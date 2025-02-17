@@ -1,6 +1,7 @@
 ﻿
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Biblioteka
 {
@@ -11,7 +12,7 @@ namespace Biblioteka
         public bool Zavrsena { get; set; }
         public int BrojIgraca { get; set; }
 
-
+        public int brojPokusaja;
         public Igra()
         {
             Igraci = new List<Korisnik>();
@@ -34,6 +35,7 @@ namespace Biblioteka
             if (!dodatniPotez)
             {
                 TrenutniIgracIndeks = (TrenutniIgracIndeks + 1) % Igraci.Count;
+                brojPokusaja = 0;
             }
         }
 
@@ -163,9 +165,45 @@ namespace Biblioteka
                 if (figura.Aktivna)
                     return "Figura je vec aktivna";
 
-                if (potez.BrojPolja != 6)
-                    return "Figura se moze aktivirati samo bacanjem broja 6.";
+                bool imaAktivna = trenutniIgrac.Figure.Any(f => f.Aktivna);
 
+                if (!imaAktivna)
+                {
+                    if (potez.BrojPolja != 6)
+                    {
+                        brojPokusaja++;
+                        if (brojPokusaja < 3)
+                        {
+                            return $"Figura se moze aktivirati samo bacanjem broja 6. Imate jos {3 - brojPokusaja} pokusaja.";
+                        }
+                        else
+                        {
+                            brojPokusaja = 0;
+                            SledeciPotez(false);
+                            return "Niste uspjeli aktivirati nijednu figuru nakon 3 pokusaja.Vas potez je zavrsen.";
+                        }
+                    }
+
+                    brojPokusaja = 0;
+                    figura.Pozicija = trenutniIgrac.StartPozicija;
+                    figura.Aktivna = true;
+                    if (IgraJeZavrsena(trenutniIgrac))
+                    {
+                        Zavrsena = true;
+                        return $" Čestitamo, {trenutniIgrac.Ime} je pobedio!";
+                    }
+                    SledeciPotez(true);
+                    return "Figura uspjesno aktivirana.Imate dodatni potez";
+                }
+
+
+                else 
+                { 
+                    if (potez.BrojPolja != 6)
+                {
+                    SledeciPotez(false);
+                    return "Za aktivaciju nove figure morate dobiti 6. Vaš potez je završen.";
+                }
                 figura.Pozicija = trenutniIgrac.StartPozicija;
                 figura.Aktivna = true;
                 if (IgraJeZavrsena(trenutniIgrac))
@@ -173,18 +211,9 @@ namespace Biblioteka
                     Zavrsena = true;
                     return $" Čestitamo, {trenutniIgrac.Ime} je pobedio!";
                 }
-
-
-                if (potez.BrojPolja != 6)
-                {
-                    SledeciPotez(false);
-                    return "Figura uspešno aktivirana. Vaš potez je završen.";
-                }
-                else
-                {
-                    SledeciPotez(true);
-                    return "Figura uspešno aktivirana. Imate dodatni potez.";
-                }
+                SledeciPotez(true);
+                return "Figura uspjesno aktivirana.Imate dodatni potez";
+            }
             }
             else if (potez.Akcija == "pomicanje")
             {
