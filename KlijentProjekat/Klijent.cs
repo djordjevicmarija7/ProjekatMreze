@@ -16,6 +16,7 @@ namespace KlijentProjekat
         private const int Port = 5000;
         private string ServerIp;
         private Socket klijentSocket;
+        private static readonly Random RandomGenerator = new Random();
 
         private string ime = "";
 
@@ -118,13 +119,9 @@ namespace KlijentProjekat
             bool naRedu = true;
             while (naRedu)
             {
-                Console.WriteLine("Unesite rezultat bacanja kockice(1-6):");
-                string unosKockice = Console.ReadLine();
-                if (!int.TryParse(unosKockice, out int rezultatKockice) || rezultatKockice<1 || rezultatKockice>6)
-                {
-                    Console.WriteLine("Neispravan rezultat kockice. Rezulatat mora biti broj izmedju 1 i 6.Pokušajte ponovo.");
-                    continue;
-                }
+             
+                int rezultatKockice = RandomGenerator.Next(1, 7);
+                Console.WriteLine($"Bacili ste kockicu i dobili ste: {rezultatKockice}");
 
                 Console.WriteLine("Unesite akciju (aktivacija, pomicanje):");
                 string akcija = Console.ReadLine()?.Trim().ToLower();
